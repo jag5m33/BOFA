@@ -1,0 +1,49 @@
+[project]
+name = "pybofa"
+version = "0.0.1"
+description = "multi-model consensus tool"
+readme = "README.md"
+authors = [{ name = "jks", email = "jag5m33@gmail.com" }]
+requires-python = ">=3.13"
+
+dependencies = [
+    "opencv-python==4.13.0.90",
+    "numpy==2.4.1",
+    "tensorflow==2.20.0",
+    "tqdm==4.67.1",
+    "pandas == 3.0.0",
+    "matplotlib>=3.10.8",
+    "scikit-learn>=1.8.0",
+    "seaborn>=0.13.2",
+    "tf-keras-vis>=0.8.7",
+]
+
+[dependency-groups]
+dev = [
+    "ruff==0.14.13",
+    "pytest==8.4.0",
+    "pytest-xdist==3.7.0",
+    "pytest-benchmark==5.1.0",
+    "pytest-sugar==1.0.0",
+    "pytest-profiling==1.8.1"
+]
+
+[tool.ruff]
+line-length = 140
+exclude = ["dist", "data", "doc", ".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = []
+
+[tool.ruff.lint.per-file-ignores]
+"utils.py" = ["F401"]
+
+[tool.ruff.format]
+line-length = 140
+
+[project.optional-dependencies]
+viz = [
+    "matplotlib== 3.10.8",
+    "scikit-learn== 1.8.0"
+]

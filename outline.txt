@@ -1,0 +1,15 @@
+Biomarker Data
+      ↓
+Preprocessing
+      ↓
+Autoencoder
+      ↓
+Latent Space Representation
+      ↓
+Isolation Forest
+GMM
+DBSCAN
+      ↓
+Consensus Vote
+      ↓
+Final Anomaly Flag

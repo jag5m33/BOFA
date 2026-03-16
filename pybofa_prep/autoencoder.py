@@ -1,0 +1,1 @@
+#Input → Encoder → Latent space → Decoder → Reconstructed input
