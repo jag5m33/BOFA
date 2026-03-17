@@ -1,10 +1,8 @@
 
 # section: image data
 class data:
-    test_data_split = 0.10
-    base = r'C:\Users\jagmeet'
-    src_path = base + r'\AD'
-    test_path = base + r'\AD_test'
+    gh_admin = r'C:/Users/jagmeet/bofa_data/final_control_df.csv'
+    
 
     # section: image meta data
     mild_count = 1792

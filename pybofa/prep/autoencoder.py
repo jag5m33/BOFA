@@ -1,28 +1,30 @@
 #Input → Encoder → Latent space → Decoder → Reconstructed input
 # a type of artificial neural network
-import numpy as np
-import matplotlib.pyplot as plt
 from tensorflow.keras.datasets import mnist 
 from tensorflow.keras.model import Model 
 from tensorflow.keras.layers import Input, Dense, Flatten, ReShape
 from tensorflow.keras.optimizers import Adam
 
-# you need to perform an 80/20 SPLIT on the dataset to get an x train and x test 
+#Autoencoder works on all data GHadmin. data and the athlete data itself = merged_df 
 
-data = # the PREPROCESSED CLEANED AND NORMALISED DATASET OF ENDOCRINE VARIABLES
+import os 
+import pandas as pd
+from config import data as dcfg
 
-x_train, x_test = data
-#since the model is unsupervised the y train and y test DO NOT EXIST as you arent tring to get an answer for the data itself, you want to map the internal structures in the data
-x_train.shape 
-x_test.shape 
-
-# the shapes of the training and test sets will tell us what we want to return from the autoencoder - we will use the 2nd and 3rd dimension shape and multiply (from the .shape) as we want the dimensions of one sample to put into the autoencoder one at a time 
+df = pd.read_csv(dcfg.gh_admin)
 
 
-encoder.input = keras.Input(x_train)
+df.shape
+
+
+
+#encoder.input = keras.Input(x_train)
 
 
 
 #the autoencoder model fitting now:
 
-model.fit(x_train, x_test)
+#model.fit(x_train, x_test)
+
+# Add additional function into the bottom here: define GH-direction - comapred to the total vector of GH and the normal vector - what is the threshold difference in distance between these two points
+# use later as secondary evaluater - if distances are closer to the number (called X) then they are far away, if they 
