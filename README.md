@@ -20,8 +20,12 @@ A config and TOML file will also be used to prevent any hard coded information t
 
 1st step is pre-processing' on the GHadmin. dataset (control) and the unlabelled data separately:
     1. Log-transform markers (IGF-I and P-III-NP) to handle biological skewness.
+
     2. Z-score normalise markers (separately for each assay: CIS, Orion, etc.).
+    
     3. Z-score normalise Age.
+    
     4. Encode sex (0 for Male, 1 for Female).
+    
     5. Aggregate: Group by Volunteer and calculate the mean of the Z-scores to get your final row: [AthleteID, Age_Z, sex, IGF_Z_Avg, PIIIP_Z_Avg].
 
