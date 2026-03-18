@@ -1,14 +1,7 @@
 
 # section: image data
 class data:
-    gh_admin = r'C:/Users/jagmeet/bofa_data/merged_df.csv'
-    
-
-    # section: image meta data
-    mild_count = 1792
-    moderate_count = 724
-    no_count = 2560
-    data_folders = ["mild", "moderate", "no"]
+    merged_df = r'C:/Users/jagmeet/bofa_data/merged_df.csv'
 
 
 # section: image processor
@@ -32,6 +25,8 @@ class model:
 
     #model fit
     epoch=50
+    epochs_2 = 10
+    dim = 9
 
 
 
