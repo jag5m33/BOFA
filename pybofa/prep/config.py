@@ -1,7 +1,7 @@
 
 # section: image data
 class data:
-    gh_admin = r'C:/Users/jagmeet/bofa_data/final_control_df.csv'
+    gh_admin = r'C:/Users/jagmeet/bofa_data/merged_df.csv'
     
 
     # section: image meta data

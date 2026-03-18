@@ -1,0 +1,73 @@
+---
+title: "cleaning_df_test"
+output: html_document
+date: "2026-03-17"
+---
+
+Import libraries  
+```{r}
+library(tidyverse)
+library(dplyr)
+library(readxl)
+```
+
+import Control GH administered dataset
+```{r}
+control_df <- read_excel("GH_admin.xls")
+
+control_df
+```
+Log transform and normalise the method columns
+```{r}
+
+clean_control_df <- control_df %>%
+  mutate(cis_pnp_lg = log(`CIS PIIIP u/mL`),
+         orion_pnp_lg = log(`ORION PIIIP ng/mL`),
+         immulite_igf_lg = log(`IMMULITE IGF-1 ng/mL`),
+         immuno_igf_lg = log(`IMMUNO IGF-I ng/mL`))
+
+clean_control_df <- clean_control_df %>%
+  mutate(cis_pnp_norm = scale(cis_pnp_lg),
+         orion_pnp_norm = log(orion_pnp_lg),
+         immulite_igf_norm = log(immulite_igf_lg),
+         immuno_igf_norm = log(immuno_igf_lg))
+
+colnames(clean_control_df)
+clean_control_df <- subset(clean_control_df, select = c(-5, -6, -7, -8, -9, -17, -18, -19, -20, -16, -15, -14, -13))
+view(clean_control_df)
+
+
+library()
+
+clean_control_df <- clean_control_df %>%
+  rename(age = Age...11, 
+         sex = Gender) %>%
+  select(-Age...12, -`Visit Day`)
+
+```
+
+normalise and average the biomarker values.
+```{r}
+clean_control_df <- clean_control_df%>%
+  mutate(age = scale(age))
+
+unique(clean_control_df$cis_pnp_norm)
+colnames(clean_control_df)
+
+
+clean_control_df$avg_pnp <- rowMeans(clean_control_df[, c("cis_pnp_norm", "orion_pnp_norm")], na.rm = TRUE)
+clean_control_df$avg_igf <- rowMeans(clean_control_df[, c("immulite_igf_norm", "immuno_igf_norm")], na.rm = TRUE)
+
+clean_control_df
+
+clean_control_df <- clean_control_df[!is.na(clean_control_df$age), ]
+
+final_control_df <- clean_control_df %>%
+  select(Volunteer,sex, age, avg_pnp, avg_igf) %>%
+  mutate(sex = ifelse(is.na(sex) | sex == "Male", 0, 1), 'id' = Volunteer)
+
+as.data.frame(final_control_df)
+
+write.csv(final_control_df, "C:/Users/jagmeet/bofa_data/final_control_df.csv", row.names = FALSE)
+```
+
