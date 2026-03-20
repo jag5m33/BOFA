@@ -6,27 +6,20 @@ class data:
 
 # section: image processor
 class processor:    
-    batch_size = 32
-    img_size = (224,224)
     validation_split = 0.2
-    clipLimit = 1.2
-    tileGridSize = (8,8)
+
 
 #section: model
 class model:
-    network_layers = [32, 64, 128, 256]
-    activation = 'softmax'
-    negative_slope = 0.01
-    learning_rate = 1e-5
-    clipnorm = 1.0
-
-    #early stopping check system
-    patience = 20
-
-    #model fit
-    epoch=50
-    epochs_2 = 10
+       #model fit
+    epochs=50
     dim = 9
+
+class isolation_forest:
+    contam = 0.05
+    estimators = 900 # the number of trees and parititoning
+    top = 10
+    
 
 
 
