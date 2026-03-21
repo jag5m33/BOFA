@@ -48,7 +48,8 @@ print("File successfully saved as athlete_latent_space.csv")
 
 #########################################################################################################################
 #running isolation forest
-latent_full_df = pd.read_csv('athlete_latent_space.csv')
+#get path to latent space file
+latent_full_df = pd.read_csv(dcfg.latent_space)
 
 
 top_10, iso_forest = IF.find_anomalies(latent_full_df, contam = icfg.contam, estimators= icfg.estimators, top = icfg.top) # config file set to 0.002 = this shows the top 10 samples 
@@ -57,4 +58,6 @@ print(f"the top 5% most anomalous samples:")
 print(top_10[['id', 'scores', 'z1', 'z2', 'z3']])
 
 top_10_IF = pd.DataFrame(top_10, columns=['id', 'scores', 'z1', 'z2', 'z3'])
-top_10_IF.to_csv('top_10_IF_flagged', index=False)
+#top_10_IF.to_csv('top_10_IF_flagged', index=False)
+
+#########################################################################################################################

@@ -2,6 +2,7 @@
 # section: image data
 class data:
     merged_df = r'C:/Users/jagmeet/bofa_data/merged_df.csv'
+    latent_space = r'C:/Users/jagmeet/bofa_data/model_results/athlete_latent_space.csv'
 
 
 # section: image processor
