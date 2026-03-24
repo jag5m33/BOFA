@@ -1,63 +1,116 @@
-
-
-from pybofa.prep.config import model as mcfg
-from pybofa.prep.config import data as dcfg
-from pybofa.prep.config import isolation_forest as icfg
- 
+# =================================================================
+# SECTION 1: IMPORTS & CONFIG
+# =================================================================
+from pybofa.prep.config import model as mcfg, data as dcfg, isolation_forest as icfg, single_vector_machine as scfg
 import pybofa.prep.vf_autoencoder as aut
 import pybofa.models.IF as IF 
+import pybofa.models.SVM as SVM 
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+from sklearn.svm import OneClassSVM
+from sklearn.preprocessing import StandardScaler
+import random
 
+# SET GLOBAL SEEDS (Do this before any other imports)
+np.random.seed(42)
+random.seed(42)
+tf.random.set_seed(42)
 
-# by saying df_tensor and n_features the definition pulls out the returns and put them in their correspnding variable names 
-df_tensor, n_features, ids, methods = aut.proc(dcfg.merged_df) 
+# 2. Force TensorFlow to be deterministic (Optional but helps)
+tf.config.experimental.enable_op_determinism()
 
-#run the plotting first to prove that 3 is the best number of dimesions
-dims, final_loss_values = aut.elbow_plot(n_features, dim = mcfg.dim, data = df_tensor)
-aut.plotting(dims, final_loss_values)
+# =================================================================
+# SECTION 2: AUTOENCODER TRAINING & DATA SAVING
+# =================================================================
+# 1. Process Raw Data and load Metadata
+df_tensor, n_features, ids, sources = aut.proc(dcfg.merged_df)
+merged_raw = pd.read_csv(dcfg.merged_df)
 
-#build autoenc.
+# 2. Build and Train 3D Bottleneck
 autoencoder = aut.autoenc_build(n_features, 3)
 aut.compiler(autoencoder)
-history = aut.train_autoencoder(autoencoder, data = df_tensor, epochs = mcfg.epochs)
+aut.train_autoencoder(autoencoder, data=df_tensor, epochs=mcfg.epochs)
 
-autoencoder.save('trained_bofa_autoencoder.keras') 
-print("Model frozen. Coordinates will be stable from now on.") 
+# 3. Extract Raw Latent Space (Math ready)
+encoder, _ = aut.latent_space(autoencoder)
+latent_data_raw = aut.arrays(encoder, df_tensor) 
 
-
-# #setting up the latent space & saving it
-autoencoder = tf.keras.models.load_model('trained_bofa_autoencoder.keras')
-
-encoder, dimensions = aut.latent_space(autoencoder)
-
-print(f"Total Athletes: {latent_data.shape[0]}")
-print(f"Coordinates per Athlete: {latent_data.shape[1]}")
-print(f"Full Shape Tuple: {latent_data.shape}")
-
-# #plot  t-SNE 
-latent_data = IF.t_sne(latent_data)
-
- #saving latent data 
-latent_full_df = pd.DataFrame(latent_data, columns=['z1', 'z2', 'z3'])
-latent_full_df['id'] = ids.values
-latent_full_df.to_csv('athlete_latent_space.csv', index=False)
-print("File successfully saved as athlete_latent_space.csv")
+    # Look at how much the model struggled with each sample (identification and plotting wise)
+reconstructions = autoencoder.predict(df_tensor) # predict the sample from the dimensioality reduction 
+# find the average difference between the reconstruction and the true value. This looks at the MSE (loss of info.)
+mse_loss = np.mean(np.square(df_tensor - reconstructions), axis =1)
 
 
-#########################################################################################################################
-#running isolation forest
-#get path to latent space file
-latent_full_df = pd.read_csv(dcfg.latent_space)
+# 4. CREATE & SAVE THE DATAFRAME + add  the error as a feature
+latent_df = pd.DataFrame(latent_data_raw, columns=['z1', 'z2', 'z3'])
+latent_df['recon_error'] = mse_loss
+latent_df['id'] = ids.values
+latent_df['source'] = sources.values
+latent_df['sex'] = merged_raw['sex'].values # Attach gender directly
 
+# Save to your folder so you can find it later
+latent_df.to_csv('frozen_latent_data.csv', index=False)
+print("--- SUCCESS: Coordinates saved to 'frozen_latent_data.csv' ---")
 
-top_10, iso_forest = IF.find_anomalies(latent_full_df, contam = icfg.contam, estimators= icfg.estimators, top = icfg.top) # config file set to 0.002 = this shows the top 10 samples 
+# =================================================================
+# SECTION 3: GENDER-AWARE ANOMALY DETECTION
+# =================================================================
 
-print(f"the top 5% most anomalous samples:")
-print(top_10[['id', 'scores', 'z1', 'z2', 'z3']])
+#latent_df = pd.read_csv(dcfg.latent_df)
 
-top_10_IF = pd.DataFrame(top_10, columns=['id', 'scores', 'z1', 'z2', 'z3'])
-#top_10_IF.to_csv('top_10_IF_flagged', index=False)
+gh_samples = latent_df[latent_df['source'] == 'GH_CONTROL']
+clean_athletes = latent_df[latent_df['source'] == 'ATHLETE_REF']
 
-#########################################################################################################################
+# --- 1. ISOLATION FOREST ---
+features = ['z1', 'z2', 'z3', 'recon_error']
+
+top_10_IF, processed_df, if_model = IF.find_anomalies(
+    train_df=clean_athletes[features], 
+    full_df=latent_df, 
+    contam=icfg.contam, 
+    estimators=icfg.estimators, 
+    top=icfg.top
+)
+
+# Global Scale FIRST  = ensures that it is consistant across sex
+# SVM - single global SVM
+features = ['z1', 'z2', 'z3', 'recon_error']
+scaler = StandardScaler()
+scaler.fit(clean_athletes[features])
+
+# FIT on clean data ONLY
+train_scaled = scaler.fit_transform(clean_athletes[features])
+full_scaled = scaler.transform(processed_df[features])
+
+# Train the SVM
+svm_model = OneClassSVM(kernel='rbf', gamma=scfg.gamma, nu=scfg.nu).fit(train_scaled)
+
+# Apply to everyone
+processed_df['svm_anomaly'] = svm_model.predict(full_scaled)
+
+# Check if the GH samples actually look 'anomalous' to the Autoencoder
+gh_samples = latent_df[latent_df['source'] == 'GH_CONTROL']
+athlete_ref = latent_df[latent_df['source'] == 'ATHLETE_REF']
+
+print(f"Athlete Mean Error: {athlete_ref['recon_error'].mean():.6f}")
+print(f"GH Control Mean Error: {gh_samples['recon_error'].mean():.6f}")
+# =================================================================
+# SECTION 4: PERFORMANCE SUMMARY
+# =================================================================
+gh_total = len(gh_samples)
+gh_caught_if = processed_df[(processed_df['source'] == 'GH_CONTROL') & (processed_df['anomaly'] == -1)]
+gh_caught_svm = processed_df[(processed_df['source'] == 'GH_CONTROL') & (processed_df['svm_anomaly'] == -1)]
+
+print("\n" + "="*40)
+print("FINAL PERFORMANCE SUMMARY")
+print("="*40)
+print(f"ISOLATION FOREST RECALL: {len(gh_caught_if)}/{gh_total} ({len(gh_caught_if)/gh_total*100:.1f}%)")
+print(f"SVM GENDER-SPLIT RECALL: {len(gh_caught_svm)}/{gh_total} ({len(gh_caught_svm)/gh_total*100:.1f}%)")
+print("-" * 40)
+
+# Final Visualization to see the Gender clusters
+viz_scaler = StandardScaler()
+scaled_viz_coords = viz_scaler.fit_transform(latent_df[['z1', 'z2', 'z3']])
+IF.t_sne(scaled_viz_coords, latent_df['sex'].values)
+

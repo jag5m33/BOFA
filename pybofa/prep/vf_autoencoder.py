@@ -11,25 +11,29 @@ from pybofa.prep.config import processor as pcfg
 import matplotlib.pyplot as plt
 
 #import matplotlib.pyplot as plt
-def proc(merged_df): # Use the path from your config file
-    df = pd.read_csv(dcfg.merged_df)
+def proc(merged_df_path): 
+    df = pd.read_csv(merged_df_path)
     
-    # 1. Isolate IDs and encoded Methods (Column 0, 5) 
-    ids = df.iloc[:, 0]
-    methods = df.iloc[:, 5]
+    # 1. Isolate Metadata (ID and Source)
+    # We keep 'source' separate so the model doesn't use it for training
+    ids = df['id']
+    sources = df['source']
     
-    # 2. Drop the "id" column to leave  4 metrics
-    numeric_df = df.drop(columns=["id"])
+    # 2. Prepare Numeric Data
+    # We drop 'id' and 'source' to leave only: sex, age, avg_pnp, avg_igf
+    numeric_df = df.drop(columns=["id", "source"])
     
-    # 3. Convert to Tensor then to NumPy float32
-    df_tensor = tf.convert_to_tensor(numeric_df, dtype=tf.float32).numpy()
+    # 3. Convert to NumPy float32 for TensorFlow
+    df_tensor = numeric_df.values.astype('float32')
     
-    # 4. Get the number of features = (4)
+    # 4. Get the number of features (should be 4)
     n_features = df_tensor.shape[1]
     
     print(f"Data ready. Rows: {df_tensor.shape[0]}, Features: {n_features}")
     
-    return df_tensor, n_features, ids, methods
+    # Return sources as well so they can be mapped back later
+    return df_tensor, n_features, ids, sources
+
 ## BUILDING
 def autoenc_build(input_shape, dim):
     model = models.Sequential([
@@ -97,18 +101,31 @@ def plotting(dims, errors):
         #in keras you can create a new model by defining its input as the origonal models inout and its output 
 
 def latent_space(autoencoder):
-    input = autoencoder.layers[0].input
-    vectors = autoencoder.get_layer('bottleneck').output
-    dimensions = vectors[:, 0:3]
+    # This reaches directly into the first layer to find the definition
+    encoder_input = autoencoder.layers[0].input
     
-    encoder = models.Model(inputs=input, outputs=dimensions)
-    print(f" shape of bottleneck latent space layer of the autoencoder:{dimensions} ")
-
+    # This stays the same
+    bottleneck_output = autoencoder.get_layer('bottleneck').output
     
-    return encoder, dimensions  # by specialiseing encoder - you create a tool that can run to say encoder.predict(merged_Df) and this will create a numpy array ready for the models downstream
+    encoder_model = models.Model(inputs=encoder_input, outputs=bottleneck_output)
+    print(f"Encoder created. Latent dimensions: {bottleneck_output.shape[1]}")
+    
+    return encoder_model, bottleneck_output.shape[1]
 
-
-#creating latent_data - a numpy 3D array 
-def arrays(encoder, data ):
+def arrays(encoder, data):
+    # Generates the 3D coordinates (z1, z2, z3)
     latent_data = encoder.predict(data)
     return latent_data
+
+def splits_for_pipeline(latent_df):
+    # --- UPDATE: Use 'source' label instead of ID string matching ---
+    # This is much cleaner and matches your R-script labels
+    gh_mask = (latent_df['source'] == 'GH_CONTROL')
+    
+    athlete_data = latent_df[~gh_mask].copy()
+    gh_val_data = latent_df[gh_mask].copy()
+    
+    print(f"Athlete training set: {len(athlete_data)} samples")
+    print(f"GH validation set: {len(gh_val_data)} samples")
+    
+    return athlete_data, gh_val_data
