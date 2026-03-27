@@ -6,11 +6,11 @@ from pybofa.prep.config import gauss as gcfg
 from pybofa.prep.config import processor as pcfg
 from pybofa.prep.config import conclusion_metrics as ccfg
 
-import pybofa.prep.vf_autoencoder as aut
+import old.vf_autoencoder as aut
 import pybofa.models.IF as IF 
 import pybofa.models.SVM as SVM 
 import pybofa.models.gmm as gmm
-import pybofa.prep.pca as pca_mod
+import old.pca as pca_mod
 
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
