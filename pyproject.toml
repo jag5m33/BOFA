@@ -42,8 +42,4 @@ ignore = []
 [tool.ruff.format]
 line-length = 140
 
-[project.optional-dependencies]
-viz = [
-    "matplotlib== 3.10.8",
-    "scikit-learn== 1.8.0"
-]
+
