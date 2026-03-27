@@ -9,7 +9,7 @@ from sklearn.impute import SimpleImputer
 
 # THIS SCRIPT RUNS ON BOTH SEX
 
-# load master dataset
+# load master dataset   
 merged_df = pd.read_csv(dcfg.merged_df)
 merged_df['sex'] = merged_df['sex'].astype(int)
 #select all features that are in the female df
@@ -41,7 +41,6 @@ gh_mask = female_df['source'] == 'GH_CONTROL'
 
 # create dataset: clean athletes with set columns of features from athlete_ref source
 clean_athletes = female_df.loc[athlete_mask, valid_features] 
-
 
 #train IF
 top_10_IF, processed_df, if_model = IF.find_anomalies(

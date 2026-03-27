@@ -1,14 +1,17 @@
-Biomarker Data
-      ↓
-Preprocessing
-      ↓
-Fit anomaly models
-    • Isolation Forest
-    • GMM
-    • DBSCAN
-      ↓
-Compute anomaly scores (IF, GMM, DBSCAN)
-      ↓
-Consensus voting (≥2 models agree)
-      ↓
-Flag GH-like anomalies
+Preprocessing (R)
+    ↓
+Feature selection + imputation (Python)
+    ↓
+Train on clean athletes only
+    ↓
+Apply models (IF, SVM, GMM)
+    ↓
+Normalise scores
+    ↓
+Consensus voting
+    ↓
+Final anomaly score
+    ↓
+Thresholding
+    ↓
+Performance evaluation
