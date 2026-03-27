@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 from sklearn.ensemble import IsolationForest
 import pandas as pd
-from pybofa.prep.config import isolation_forest as icfg
+from pybofa.prep.config import isolation_forest as icfg, processor as pcfg
 from sklearn.manifold import TSNE
 
 def t_sne(latent_data, labels):
@@ -42,16 +42,11 @@ def t_sne(latent_data, labels):
     return x_tsne
 
 
-def find_anomalies(train_df, full_df, contam, estimators, top):
-    # Use the coordinates for training/prediction (training - unseen data, validation (control))
-    features = ['z1', 'z2', 'z3', 'recon_error']
+def find_anomalies(train_df, full_df, features, contam, estimators, top):
+    
     x_train = train_df[features].copy()
     x_full = full_df[features].copy()
 
-    train_df['recon_error'] = train_df['recon_error'] * 100
-    full_df['recon_error'] = full_df['recon_error'] * 100
-
-    # Initialize Forest
     iso_forest = IsolationForest(
         n_estimators=estimators,
         random_state=icfg.random_state, 
@@ -60,20 +55,16 @@ def find_anomalies(train_df, full_df, contam, estimators, top):
         bootstrap=True
     )
     
-    # Train on clean athletes only to establish "normal" boundaries
     iso_forest.fit(x_train)
-    
-    # Predict on everything
-    full_df['anomaly'] = iso_forest.predict(x_full)
-    # decision_function gives lower (more negative) scores to more isolated points
-    full_df['scores'] = iso_forest.decision_function(x_full) 
-     
-    #Use 'source' column from original df to identify unknown athlete anomalies
-    #  athletes flagged (-1) &  NOT in the GH control group
-    athlete_anoms = full_df[(full_df['anomaly'] == -1) & 
-                            (full_df['source'] == 'ATHLETE_REF')] 
-    
-    # Sort by score  --> get highest (most extreme) first
-    top_n = athlete_anoms.sort_values(by='scores').head(top) 
+
+    full_df['if_anomaly'] = iso_forest.predict(x_full)
+    full_df['scores'] = iso_forest.decision_function(x_full)
+
+    athlete_anoms = full_df[
+        (full_df['if_anomaly'] == -1) &
+        (full_df['source'] == 'ATHLETE_REF')
+    ]
+
+    top_n = athlete_anoms.sort_values(by='scores').head(top)
 
     return top_n, full_df, iso_forest

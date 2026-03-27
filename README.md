@@ -62,5 +62,7 @@ A config and TOML file will also be used to prevent any hard coded information t
 
     - this is how anomalies are found with this model.
 
-    1. 
+    1. determine estimators (no. of trees and partitions), contamination (the top 0.05 = 5% of anomalies will be identified)
+    2. then build hte forest and predict the anomalies for the top 10 samples 
+    
 

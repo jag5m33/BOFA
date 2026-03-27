@@ -2,6 +2,7 @@
 
 import tensorflow as tf
 from tensorflow.keras import models, layers
+from tensorflow.keras.callbacks import EarlyStopping
 import pandas as pd
 
 import pandas as pd
@@ -9,45 +10,51 @@ from pybofa.prep.config import data as dcfg
 from pybofa.prep.config import model as mcfg
 from pybofa.prep.config import processor as pcfg
 import matplotlib.pyplot as plt
+import numpy as np
 
 #import matplotlib.pyplot as plt
 def proc(merged_df_path): 
+    
     df = pd.read_csv(merged_df_path)
     
-    # 1. Isolate Metadata (ID and Source)
-    # We keep 'source' separate so the model doesn't use it for training
     ids = df['id']
     sources = df['source']
     
-    # 2. Prepare Numeric Data
-    # We drop 'id' and 'source' to leave only: sex, age, avg_pnp, avg_igf
     numeric_df = df.drop(columns=["id", "source"])
     
-    # 3. Convert to NumPy float32 for TensorFlow
-    df_tensor = numeric_df.values.astype('float32')
+    # Split BEFORE scaling
+    athlete_mask = df['source'] == 'ATHLETE_REF'
+    athlete_df = numeric_df[athlete_mask]
     
-    # 4. Get the number of features (should be 4)
+    from sklearn.preprocessing import StandardScaler
+    scaler = StandardScaler()
+    
+    # Fit ONLY on athletes
+    scaler.fit(athlete_df.values)
+    
+    # Transform ALL data using athlete scaling
+    df_tensor = scaler.transform(numeric_df.values).astype('float32')
+    
     n_features = df_tensor.shape[1]
     
-    print(f"Data ready. Rows: {df_tensor.shape[0]}, Features: {n_features}")
-    
-    # Return sources as well so they can be mapped back later
     return df_tensor, n_features, ids, sources
-
 ## BUILDING
 def autoenc_build(input_shape, dim):
     model = models.Sequential([
         # Encoder part
-        layers.InputLayer(input_shape=(input_shape,), name = 'input_layer'), 
-        layers.Dense(128, activation="relu"),
-        layers.Dense(64, activation="relu"),
+        layers.InputLayer(input_shape=(input_shape,), name='input_layer'),
+
         layers.Dense(32, activation="relu"),
-        layers.Dense(dim, name='bottleneck'), # Your 3D coordinates
-        
-        # Decoder part (Note: these must be inside the [ ] brackets)
+        #layers.Dropout(0.1),
+        layers.Dense(16, activation="relu"),
+        layers.Dense(dim,
+                     name='bottleneck',
+                     activity_regularizer=tf.keras.regularizers.l1(1e-3)
+                     ), # creates sparrse latent space and better seperation
+
+        # Decoder
+        layers.Dense(16, activation="relu"),
         layers.Dense(32, activation="relu"),
-        layers.Dense(64, activation="relu"),
-        layers.Dense(128, activation="relu"),
         layers.Dense(input_shape, activation="linear") # Back to 4 features
     ])
     return model
@@ -61,26 +68,37 @@ def compiler(autoencoder):
     )
 
 ## TRAINING
-def train_autoencoder(autoencoder, data,  epochs = None):
-    # If you didn't pass a specific number, use the config file
+def train_autoencoder(autoencoder, data, epochs=None):
     if epochs is None:
-        epochs = mcfg.epochs 
+        epochs = mcfg.epochs
+
+    noise_factor = 0.3 # increases feature learning + less memorisation
+    noisy_data = data + noise_factor * np.random.normal(size=data.shape)
+
+    early_stop = EarlyStopping(
+        monitor = 'loss',
+        patience = mcfg.patience,
+        restore_best_weights = True
+    )
 
     return autoencoder.fit(
-        x=data, 
-        y=data, 
-        epochs=epochs, # Use the 'epochs' variable we just set
-        validation_split=pcfg.validation_split
+        x=noisy_data,
+        y=data,
+        epochs=epochs,
+        callbacks = [early_stop],
+        #shuffle=True,
+        verbose=1
     )
 
 def elbow_plot( input_shape, dim, data):
+    
     dims = range(1, dim+1)
     errors = []
     for i in dims:
         model = autoenc_build(input_shape, dim=i)
         compiler(model)
 
-        history = train_autoencoder(model, data, epochs = mcfg.epochs)
+        history = train_autoencoder(model, data.copy(), epochs=mcfg.epochs)
         final_loss_value = history.history['loss'][-1]
         errors.append(final_loss_value)
     return(dims, errors)

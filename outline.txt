@@ -2,10 +2,6 @@ Biomarker Data
       ↓
 Preprocessing
       ↓
-Autoencoder
-      ↓
-Latent Space Representation
-      ↓
 Fit anomaly models
     • Isolation Forest
     • GMM
@@ -14,12 +10,5 @@ Fit anomaly models
 Compute anomaly scores (IF, GMM, DBSCAN)
       ↓
 Consensus voting (≥2 models agree)
-      ↓
-Compute GH similarity score (projection)
-      ↓
-Combine:
-    • Rule-based: consensus AND GH_score > threshold
-    OR
-    • Weighted: Final_score = consensus_score × GH_score
       ↓
 Flag GH-like anomalies
