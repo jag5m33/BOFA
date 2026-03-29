@@ -6,7 +6,7 @@ from pybofa.prep.config import gauss as gcfg
 from pybofa.prep.config import processor as pcfg
 from pybofa.prep.config import conclusion_metrics as ccfg
 
-import old.vf_autoencoder as aut
+import pybofa.models.ae as aut
 import pybofa.models.IF as IF 
 import pybofa.models.SVM as SVM 
 import pybofa.models.gmm as gmm
