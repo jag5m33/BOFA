@@ -1,21 +1,27 @@
 ## BOFA
 
-BOFA: Bayesian Optimization & Feature Analysis
+BOFA: Bayesian Optimisation & Feature Analysis
 1. PROJECT OVERVIEW
 BOFA is a machine learning framework developed to detect anomalous athletes exhibiting Growth Hromone (GH)-like biomarker profiles. This project applies a consensus-based anomaly detection approach, combining multiple unserupvised models to identify athletes whose physiological signitures deviate from a learning baseline of normal biological vairation. 
 The primary objective is to:
 
     Detect anomalous (GH-like) athletes from a reference populationusing a robust, mulit-model consensus framework.
 
+BOFA addresses this by moving away from the commonly used static threshols (like the GH-2000 score) towards a consensus-based anomaly detection approach. The models learns the biological 'norm' with variation from a populaition a nd flags indiivudals who deviate into GH-synonymous physiological spaces.
+
 2. REPO STRUCTURE
 The repository is organised into modular segments to ensure reproducability and scalability, with a config file to prevent hard coding variables into the main-body of models. 
-/prep   - data preprocessing and cleaning pipelines
+/prep   - contains congif.py (centralised parameter management to prevent hardcoding values into the main body script)
 
-/models - machine learning models (isolation forest, svm, gmm)
+/models - machine learning models 
+        - ae.py: Neural Network for dimensionality reduction and reconstruction error 
+        - IF.py: Isolation Forest for parition based anomaly detection through scoring.
+        - SVM.py: One-Class Support Vector Machine for boundary detection.
+        - gmm.py: Gaussian Mixture Model for density-based probability estimation and scoring.
 
-/config - centralised configuration files (parameters and file paths)
+bofa_go.py: the primary execusion script which calls definitiions from scripts 
 
-/results - output files, model results, analysis figures.
+/results - Output CSVs includign flagged athletes and recall calibration logs
 
 This structure ensures that data processing modelling and configuration steps are seperated and imporve maintainability. 
 
@@ -28,7 +34,6 @@ This structure ensures that data processing modelling and configuration steps ar
         i. Log-Transformation of biomarkers (IGF-I, P-III-NP) to reduce biological skewed distribution 
 
         ii. Z-score Normalisation applied per assay column to address inter-assay vairability
-
         iii. Datasets were merged across multiple sources into a unified dataframe 
 
     STEP 2: Feature Engineerin agn Extraction (R)

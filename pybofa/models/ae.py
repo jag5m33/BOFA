@@ -29,7 +29,7 @@ def build_and_train_ae(train_data, latent_dim, epochs, batch_size, patience):
                     train_data, 
                     epochs=epochs, 
                     batch_size=batch_size, 
-                    allbacks=[early_stop], # prevent overfitting by stopping trainig when model stops getting better at rep. normal athletes)
+                    callbacks=[early_stop], # prevent overfitting by stopping trainig when model stops getting better at rep. normal athletes)
                     verbose=0)
     
     return autoencoder, encoder
