@@ -14,11 +14,16 @@ The repository is organised into modular segments to ensure reproducability and 
 /prep   - contains congif.py (centralised parameter management to prevent hardcoding values into the main body script)
 
 /models - machine learning models 
-        - ae.py: Neural Network for dimensionality reduction and reconstruction error 
-        - IF.py: Isolation Forest for parition based anomaly detection through scoring.
-        - SVM.py: One-Class Support Vector Machine for boundary detection.
-        - gmm.py: Gaussian Mixture Model for density-based probability estimation and scoring.
 
+        - ae.py: Neural Network for dimensionality reduction and reconstruction error 
+
+        - IF.py: Isolation Forest for parition based anomaly detection through scoring.
+
+        - SVM.py: One-Class Support Vector Machine for boundary detection.
+
+        - gmm.py: Gaussian Mixture Model for density-based probability estimation and scoring.
+        
+        
 bofa_go.py: the primary execusion script which calls definitiions from scripts 
 
 /results - Output CSVs includign flagged athletes and recall calibration logs

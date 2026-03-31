@@ -1,39 +1,33 @@
-
 class data:
     merged_df = r'C:/Users/jagmeet/bofa_data/merged_df.csv'
-    # Result storage
-    latent_space = r'C:/Users/jagmeet/bofa_data/model_results/athlete_latent_space.csv'
     final_results = r'C:/Users/jagmeet/bofa_data/model_results/flagged_athletes.csv'
 
 class processor:
-    # Core GH-2000 features + engineered ratio to capture physiological 'tilt'
-    features = ['age', 'sex', 'avg_pnp', 'avg_igf', 'igf_pnp_ratio'] # 5th columns of ratio
-    validation_split = 0.2
+    # We use these for the initial cleanup and engineered ratio
+    features = ['age', 'sex', 'avg_pnp', 'avg_igf', 'igf_pnp_ratio']
+    pnp_cols = ['ln_pnp_orion', 'ln_pnp_cis', 'ln_pnp_siemens', 'ln_pnp_initial', 'ln_pnp_mean', 'avg_pnp']
+    igf_cols = ['ln_igf_immuno', 'ln_igf_immulite', 'ln_igf_ms', 'ln_igf_ids', 'ln_igf_imt', 'ln_igf_initial', 'ln_igf_mean', 'avg_igf']
 
 class model_params:
-    epochs = 100
-    latent_dim = 3  # Compressed representation for anomaly models
-    patience = 10
+    epochs = 150
+    latent_dim = 3    # Squeezing 5D input into 3D latent space
+    patience = 25
     batch_size = 32
 
 class ensemble_params:
-    # We use very low contamination to focus only on extreme outliers
-    iforest_contam = 0.005 
-    svm_nu = 0.005
-    gmm_components = 4
+    iforest_contam = 0.05 
+    svm_nu = 0.05
+    gmm_components = 5      
     random_state = 42
-    # MODEL WEIGHTING (The total should equal 1.0)
-    # GMM and IForest often capture the IGF-I/P-III-NP relationship best
+    
     weights = {
-        'iforest': 0.30,
-        'svm':     0.15,
-        'gmm':     0.35,
+        'iforest': 0.40, # Good at catching isolated "spikes"
+        'svm':     0.00, 
+        'gmm':     0.40, # Good at catching clusters of weirdness
         'recon':   0.20  
     }
 
 class calibration:
-    # Percentile of GH_CONTROL we target catching (Recall)
-    target_recall = 0.60 
-    
-    # Maximum acceptable suspicion rate in the clean athlete population
-    max_athlete_fpr = 0.05
+    target_recall = 0.70 
+    positive_label = "GH_CONTROL"
+    unlabeled_label = "ATHLETE_REF"
