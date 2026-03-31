@@ -1,7 +1,7 @@
 class data:
     merged_df = r'C:/Users/jagmeet/bofa_data/merged_df.csv'
     final_results = r'C:/Users/jagmeet/bofa_data/model_results/flagged_athletes.csv'
-
+    latent_full = r'C:/Users/jagmeet/bofa_data/model_results/latent_full.npy'
 class processor:
     # We use these for the initial cleanup and engineered ratio
     features = ['age', 'sex', 'avg_pnp', 'avg_igf', 'igf_pnp_ratio']
