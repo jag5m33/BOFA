@@ -1,13 +1,10 @@
-from sklearn.svm import OneClassSVM
+from sklearn.svm import SVC
 
-#SVM: draws a 'boundary' around the dense cluster of normal athletes' any athltes outside the boundary gets a high suspicion score
-def run_svm(train_data, full_data, cfg):
-    model = OneClassSVM(
-        kernel='rbf', 
-        nu=cfg.svm_nu, 
-        gamma='auto'
-    )
-    model.fit(train_data)
-    # Negate decision function so higher values represent anomalies
-    return model.decision_function(full_data)
-# # invert = true in the go script models.decision_function: origonal score are negative (more negative = more anomalous) - we reverse it: - x - = + (so higher value = more anomalous)
+def run_svm(X_train, y_train, X_full):
+    # We weight the 99 doped samples heavily to balance against 6000 clean ones
+    model = SVC(kernel='rbf', probability=True, class_weight={1: 50, 0: 1})
+    
+    model.fit(X_train, y_train)
+
+    # Return the probability of being in Class 1 (Doped)
+    return model.predict_proba(X_full)[:, 1]

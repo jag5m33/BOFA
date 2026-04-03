@@ -6,7 +6,10 @@ def run_iforest(train_data, full_data, cfg):
     model = IsolationForest(
         contamination=cfg.iforest_contam, 
         random_state=cfg.random_state,
-        n_estimators=200
+        n_estimators=1000,
+        max_samples = 'auto',
+        max_features = 0.65
+        #bootstrap = True
     )
     model.fit(train_data)
     # Negate the decision function: more negative = more anomalous

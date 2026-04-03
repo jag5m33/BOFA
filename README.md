@@ -23,7 +23,7 @@ The repository is organised into modular segments to ensure reproducability and 
 
         - gmm.py: Gaussian Mixture Model for density-based probability estimation and scoring.
         
-        
+
 bofa_go.py: the primary execusion script which calls definitiions from scripts 
 
 /results - Output CSVs includign flagged athletes and recall calibration logs
@@ -38,10 +38,9 @@ This structure ensures that data processing modelling and configuration steps ar
 
         i. Log-Transformation of biomarkers (IGF-I, P-III-NP) to reduce biological skewed distribution 
 
-        ii. Z-score Normalisation applied per assay column to address inter-assay vairability
-        iii. Datasets were merged across multiple sources into a unified dataframe 
+        ii. Datasets were merged across multiple sources into a unified dataframe 
 
-    STEP 2: Feature Engineerin agn Extraction (R)
+    STEP 2: Feature Engineering and Extraction (R)
         
         Following the preprocessing additional features were derived
 
@@ -49,51 +48,85 @@ This structure ensures that data processing modelling and configuration steps ar
 
         ii Categorical enconding: sex encoding as binary (0 = male, 1 = female)
 
-        iii. Z-score normalisation of age
-
         iv. additional source column added: GH_CONTROL (for all gh_administed samples - 99), ATHLETE_REF (for all other remaining athletes to be assessed for doping based on bioamrker scores)
 
 4. MODELLING PIPELINE
 
-TRAINING STRATEGY:
+PREPERATION: Initial Data prep. was also conductd in python, specifically, robust scaling (normalisation), imupting NA's with median values, etc. 
 
-    All models were trained exclusively on the ATHLETE_REF population which is reprsentative of athletes with unknown doping status. This establishes a baseline population model of athlete physiology.
+    - Robust scaling: to handle outliers adn inter-assay vairability
+    
+    - Imputer based on columnar median values: this is essential, as mean and std could be affected by extreme values which medians are often blind to. Therefore, robust scaling on median values and then imputing NA's based on this is important
 
-    THis approach follows a one-class leanring paradigm where:
 
-        - The model learns the distribution of the population data 
+THE MODEL ARCHITECTURE: Traditional unsupservised models tend to learn the 'normal' baseline however, BOFA uses a semi-seripvised approach whereby the models express both the unlabelled and labelled (control) samples during trainnig. This way the models are 'guided' to specifically recongise sampels with anomalous behaviour.
 
-        - then deviations from this population distribution are flagged as anomalies (female model)
+MODELS:
 
-        - the male model uses the GH_CONTROL samples (which are all male) to perform a semi-supervised learning approach 
+    - Autoencoder (ae): A neural network. The unsupervised baseline learns to reconstruct normal athlete profiles; a high reconstructio error flags non-standard physiolgy 
 
-5. CONSENSUS FRAMEWORK
+    - Isolation Forest (IF): Tree based approach. Unsupervised controlled approach. Partitions the data until anomalies are isolated. This model poses as a blind control to compare with the semi-supervised model outputs 
 
-To imrpove robustness and reduce model specific biases, a consensus-based approach is applied
+    - Support Vector Machines (One class SVM):  Kernal boundaries. This is a semi-superivised guided classification mode which uses support vector classification with an RBF (kernal) to define high dimensional boundaries specifically when seperating clean and doping samples 
 
-VOTING SYSTEM:
+    - Gaussian Mixture Model (GMM): based on Gaussian probability distributions. The targeted densities identified by Gaussian components are highly specific and associated tightly with mean and covariance with in the control labelled group fo athletes; this creates a doping probability distribution. 
 
-    a. each anomaly model assigns an anomaly label:
 
-        - -1 : anomaly 
+When training the models, it is importnat to note that they are NOT trained as a large group, they are evaluated individually, and then the outputs and evaluated together. They use 2 distinct data sources which define the biological model feautre spaces and prediction generated.
+    
+    - The ATHLETE_REF - this is the unlabelled 'proposed' population normal baseline; with approx. 6000+ samples representing the 'norm'. Biological variation of elite athltes are found with the 'volume of normality' review.
 
-        - +1 : normal 
+    - GH_CONTROL - this is the labelled 'positive' group fo athlete; 99 samples whereby GH has knowingly been administed. This defines the target anomaly biological signal.
 
-        - the vote strength is calculated as the total number of models that classify a sample as anomalous 
+TRAINING STRATEGY: each model in BOFA learns the data differently 
 
-WEIGHTED SCORING:
+    - Autoencoder (ae): trained on ATHLETE_REF only.
 
-    b. finalised anomaly score is calculated with a weighted combination of:
+    - Support Vector Machine/Classifier (SVM): trained on both ATHLETE_REF, GH_CONTROL
 
-        - vote strength (primary signal)
+    - Gaussian Mixture Model (GMM): trained on both ATHLETE_REF, GH_CONTROL 
 
-        - individual model anoamly scores (refinement)
+    - Isolation Forest (IF): trained on ATHLETE_REF only; to ensure that it remained sensitive to any structual deivaitons from the 'biological norm' population regardless of if the deviaiton is sepcifically mathcing the GH-control signal profile. This is the ONLY unserupvsied model used in BOFA.
 
-            THIS ENSURES:
 
-                - Strong agreement between models * individual model confidence is considered for the athlete ranking 
+5. CONSENSUS FRAMWORK & WEIGHTED SCORING 
+
+The BOFA frameowkr converts raw anomaly scores into a suspician INDEX. This is done using 2 aggregation approaches 
+    - this approach mimics a 'panel of judges' whereby different models and their corresponding levels of influence are evaluated
+
+The consensus counts and evaluations: eahc of the models identify their top 5 most suspicious athlets in the latent space
+
+    - Logic: the scoring system tallies up the number of binary flags (0,1) to create an EVALUATIVE/CONSENSUS score 
+
+    - Significance: A score of 3/3 indicates the athlete is most confidently expressed as an outlier according to the AE, IF, GMM, SVM; it indicates a high level of agreement 
+
+
+THE WEIGHTS AND HOW THEY ARE DETERMINED: since we use a semi-supervised model, not all models will be treated with equal weights 
+
+    - SVM/SVC: High weight beucase it is specifically trained on GH_CONTROL group to recongise a doping signal
+
+    - GMM: moderate weight beucase it generates a distribution for GH_CONTROl doping clusters individiually. This is an effective 'overlap' deteciton method
+
+    - IF/AE: low/moderate eights becuase they are unsupervised. They ensure that the general outliers within the larger population are NOT ingnored; they may not perfectly match signals and traces found in the 99 GH_CONTROL dataset, but they are still considered 'anomalous' when isolated from GH_CONTROL samples.
+
+scores :
+    Total Score = sum (Standardized[Score_{i}] x  Weight[{i}])
+
 
 6. EVALUATION METRICS
 
-HOW WILL THE MODEL BE EVALUAED * CURRENT DEVELOPING 
+Anti-doping models CAN NOT be evaluated on their ACCURACY as the datset is imbalance (99 male control, vs 6000 doping athletes). Instead we look at metrics that view recall (Detection dopers) and precision (not falgging clean athletes)
+
+    1. Precision Recall curves (PR): Unlike ROC curves, PR ignores true negatives; They look for needled in haystacks. It shows how much noise (false positives) to tolerate when catching a certain amount of true positives (dopers)
+
+    2. Target Recall Confusion Matrix (CM): We fix the model threshold to acheive 70% TARGET THRESHOLD. This allows us to view the false positive rate. Answers questions with regards to the threshold: If i were to catch 70% OF ALL DOPERS, HOW MANY INNOCENT ATHLETES WOULD BE FLAGGED ALONG THE WAY. 
+
+    3. 3D t-SNE population map. High dimensional data (6D in the script used) is difficult for human interpretation. Therefore, a compromise of 3 dimensinos is generated. The reduced latent space of 3D provides a map of sigansl which can be used to visualise where GH_CONTROL cases lie in the general population (ATHLETE_REF)
+
+    4. PCA Scree Plot (elbow method). Justify the autoencoder bottleneck useage. In order to prove that 3-7 dimensions is sufficient for capturing the biological variance exhibited by signals, it is important to view that the compressed latent space co-ordinates have not lost essential information required to detect dopers as noise.
+
+
+ 
+
+
             
