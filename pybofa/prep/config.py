@@ -38,3 +38,8 @@ class shades:
     C_ORANGE = "#D55E00"  # Female / Contrast
     C_GREEN = "#009E73"   # Success / Ensemble
     C_BLACK = "#000000"   # Doped / Outlier
+
+class ssae:
+    reconstruction = 1.0
+    classifier = 5.0
+

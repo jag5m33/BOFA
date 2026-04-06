@@ -1,6 +1,6 @@
 Preprocessing (R)
     ↓
-Autoencoder: 
+SS Autoencoder: 
 Feature selection + imputation (Python)
     ↓
 Train on clean athletes only
