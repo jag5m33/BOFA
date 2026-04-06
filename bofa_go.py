@@ -15,7 +15,9 @@ import pybofa.models.ae as ae_mod
 import pybofa.models.IF as if_mod    
 import pybofa.models.gmm as gmm_mod 
 import pybofa.models.SVM as svm_mod
+import pybofa.models.abp as abp
 from pybofa.plots import bofa_viz as viz
+
 
 
 def load_and_preprocess():
@@ -99,8 +101,13 @@ if __name__ == "__main__":
     # 1. Load and Preprocess
     df, train_x, full_x = load_and_preprocess()
     
+    print("STEP 1.5: generating intra-individual variance (ABP) features...")
+    abp_df = abp.abp(df)
+    # new format of the merged dataset improved, shows which athletes are flagged for intra-individual variance
+    df = df.merge(abp_df, on=['id', 'sex'], how = "left")
+
     # 2. Run Autoencoder
-    print(f"--- Step 2: Training Autoencoder (Latent Dim: {mcfg.latent_dim}) ---")
+    print(f"--- Step 2: Training Autoencoder ---")
     ae_scores, latent_train, latent_full = ae_mod.run_ae(train_x, full_x, mcfg.epochs)
 
     # 3. SAVE TO CSV
@@ -136,8 +143,7 @@ if __name__ == "__main__":
     df['if_score']  = standardize_scores(if_raw, invert=True)
 
     # GMM: Now using Contrastive Likelihood Ratio (Higher = More Doped). INVERT = FALSE
-    df['gmm_score'] = standardize_scores(gmm_raw, invert=False) 
-
+    df['gmm_score'] = standardize_scores(gmm_raw, invert=False)
     # Autoencoder: Higher Reconstruction Error = More outlier. INVERT = FALSE
     df['ae_score']  = standardize_scores(ae_scores, invert=False)
 
@@ -172,7 +178,7 @@ if __name__ == "__main__":
     print("\n" + "="*75)
     print(f" Dissertation performance: Recall TABLE (Target: {ccfg.target_recall:.0%})")
     print("-" * 75)
-    print(f"{'Agreement Level':<25} | {'Recall (Doped)':<15} | {'Ath Suspicion'}")
+    print(f"{'Agreement Level':<25} | {'Recall (Doped)':<15} | {'Athlete Suspicion'}")
     print("-" * 75)
     
     for level in range(1, 5):
@@ -189,12 +195,30 @@ if __name__ == "__main__":
     
     print("\n[SUCCESS] Pipeline complete. Check plots for final analysis.")
     
-    # --- 8. VISUALIZATION ---
+        #save latent_dim for the visualization step
+    # ---  FINAL EXPORT ---
+    # 1. Create a DataFrame for the coordinates found by the Autoencoder
+    latent_df = pd.DataFrame(
+        latent_full, 
+        columns=[f'latent_dim_{i+1}' for i in range(latent_full.shape[1])],
+        index=df.index
+    )
+
+    # Combine everything into one dataframe BEFORE saving
+    df_final = pd.concat([df, latent_df], axis=1)
+
+    # SAVE TO DISK NOW so the viz functions can see the new columns
+    print(f"Exporting full results to {dcfg.final_results}")
+    df_final.to_csv(dcfg.final_results, index=False)
+
+    # --- 5. VISUALIZATION (Must happen AFTER .to_csv) ---
     print("\n[INFO] Starting Visualization Pipeline...")
-    viz.plot_elbow_justification()
-    viz.plot_ae_elbow(train_x, mcfg.latent_dim)
-    viz.plot_method_logic()
-    viz.plot_3d_tsne()
-    #viz.plot_results()
-    #viz.plot_cm(target_recall=ccfg.target_recall)
-    print("[SUCCESS] All plots saved to your project folder.")
+    viz.plot_method_logic() 
+    #viz.plot_elbow_justification()
+    #viz.plot_ae_elbow(train_x, mcfg.latent_dim)
+    viz.plot_3d_tsne()      
+    viz.plot_results()     
+    #viz.plot_cm(target_recall=ccfg.target_recall) 
+    viz.plot_abp_suspicion_map()
+
+    print("[SUCCESS] All plots updated.")

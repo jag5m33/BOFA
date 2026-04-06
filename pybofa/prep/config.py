@@ -13,6 +13,7 @@ class model_params:
     latent_dim = 6    # Squeezing 5D input into 3D latent space
     patience = 25
     batch_size = 32
+    l1_reg = 1e-5
 
 class ensemble_params:
     gmm_components = 4
