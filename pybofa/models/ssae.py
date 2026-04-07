@@ -44,6 +44,7 @@ def run_ssae(train_data, full_data, labels, epochs):
         loss=['mse', 'binary_crossentropy'],
         loss_weights=[sscfg.reconstruction, sscfg.classifier]
     )
+    #compiler
     
     # --- PREPARING LABELS & WEIGHTS ---
     # Flatten and ensure float32 for Keras compatibility

@@ -1,3 +1,13 @@
+import sys 
+import os 
+project_root = r"c:\Users\jagmeet\vsc\pybofa" 
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+from pybofa.plots  import bofa_viz as viz    
+import pybofa
+print(f"DEBUG: Using pybofa from: {pybofa.__file__}")
+
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import RobustScaler, QuantileTransformer
@@ -14,7 +24,6 @@ import pybofa.models.IF as if_mod
 import pybofa.models.gmm as gmm_mod 
 import pybofa.models.SVM as svm_mod
 import pybofa.models.abp as abp
-from pybofa.plots import bofa_viz as viz
 
 def load_and_preprocess():
     """
@@ -30,14 +39,16 @@ def load_and_preprocess():
     
     # Pre-calculate CV for filtering 'Normal' training data
     # Note: Using standard deviation proxy if raw CV isn't in merged_df
+    #LINES 34 - 50 = 
     df_processed_list = []
 
-    for s in df['sex'].unique():
+    for s in df['sex'].unique(): # loop that runs once for each sex
         gender_group = df[df['sex'] == s].copy()
         
         # BIOLOGICAL THRESHOLDING
         # Defining 'Normal' reference population based on sex-specific variance
-        cv_limit = 0.30 if s in [0, 'M', 'Male'] else 0.50
+        cv_limit = 0.30 if s in [0, 'M', 'Male'] else 0.50  # sets a volatility threshold (males = 30%, females = 50%)
+
         
         # train_mask identifies the 'True Normal' reference population
         # (Must be from unlabeled source AND below the biological CV threshold)
@@ -45,7 +56,7 @@ def load_and_preprocess():
         
         # If your data has a 'cv' column, apply the project's strict filter:
         if 'igf_pnp_ratio_cv' in gender_group.columns:
-            train_mask = train_mask & (gender_group['igf_pnp_ratio_cv'] < cv_limit)
+            train_mask = train_mask & (gender_group['igf_pnp_ratio_cv'] < cv_limit) # select athletes beelow the CV threshold for the IGF-PNP ratio
         
         if train_mask.sum() > 0: 
             imp = SimpleImputer(strategy='median', keep_empty_features=True)
@@ -140,10 +151,15 @@ if __name__ == "__main__":
     # --- 6. FULL VISUALIZATION SUITE ---
     print("\n--- Step 4: Generating All Forensic Plots ---")
     
-    #viz.plot_elbow_justification() # Scree Plot (PCA of latent dims)
-    #viz.plot_results()             # Wide 3-panel Performance (ROC/PR)
-    viz.plot_3d_tsne()             # 3D Sex-Specific Manifold
-    #viz.plot_ssae_separation(df)   # KDE "Nudge" verification
-    #viz.plot_abp_suspicion_map()   # ABP vs ML Map
+    #viz.plot_pca_elbow()  # Scree Plot (PCA of latent dims)
+    #viz.plot_ae_elbow(full_x, choice=6)  #elbow plot of SSAE reconstruction error vs latent dim choice
+    #viz.plot_performance()  # Wide 3-panel Performance (ROC/PR)
+    #viz.plot_diagnostic_separation() # KDE "Nudge" verification
+    viz.plot_tsne(latent_data = latent_full,
+                  labels = train_labels,
+                  df_metadata = df) # PR Curves for each model + ensemble   
+    #viz.plot_model_comparison_pr()   
+    #viz.plot_abp_map()
+
 
     print(f"\n[SUCCESS] Pipeline Complete. All plots generated in the results directory.")
