@@ -5,7 +5,7 @@ BOFA: Bayesian Optimisation & Feature Analysis
 BOFA is a machine learning framework developed to detect anomalous athletes exhibiting Growth Hromone (GH)-like biomarker profiles. This project applies a consensus-based anomaly detection approach, combining multiple unserupvised models to identify athletes whose physiological signitures deviate from a learning baseline of normal biological vairation. 
 The primary objective is to:
 
-    Detect anomalous (GH-like) athletes from a reference populationusing a robust, mulit-model consensus framework.
+    Detect anomalous (GH-like) athletes from a reference population using a robust, mulit-model consensus framework.
 
 BOFA addresses this by moving away from the commonly used static threshols (like the GH-2000 score) towards a consensus-based anomaly detection approach. The models learns the biological 'norm' with variation from a populaition a nd flags indiivudals who deviate into GH-synonymous physiological spaces.
 
@@ -15,13 +15,11 @@ The repository is organised into modular segments to ensure reproducability and 
 
 /models - machine learning models 
 
-        - ae.py: Neural Network for dimensionality reduction and reconstruction error 
+        - ssae.py: Neural Network for dimensionality reduction and reconstruction error (semi-supervised autoencoder)
 
-        - IF.py: Isolation Forest for parition based anomaly detection through scoring.
+        - LS.py: Label Spreading is a graphing based learning appraoch whereby the model constructs graphs ismilar to each athlete (as a node) connects to other neighbouring 'nodes'. By spreading labels from 'controls' to unlabelled 'nodes', athletes which are unlabelled can be cateogorised accordingly
 
         - SVM.py: One-Class Support Vector Machine for boundary detection.
-
-        - gmm.py: Gaussian Mixture Model for density-based probability estimation and scoring.
         
 
 bofa_go.py: the primary execusion script which calls definitiions from scripts 
@@ -63,14 +61,14 @@ THE MODEL ARCHITECTURE: Traditional unsupservised models tend to learn the 'norm
 
 MODELS:
 
-    - Autoencoder (ae): A neural network. The unsupervised baseline learns to reconstruct normal athlete profiles; a high reconstructio error flags non-standard physiolgy 
-
-    - Isolation Forest (IF): Tree based approach. Unsupervised controlled approach. Partitions the data until anomalies are isolated. This model poses as a blind control to compare with the semi-supervised model outputs 
+    - Semi-Supervised Autoencoder (ssae): A neural network. The unsupervised baseline learns to reconstruct normal athlete profiles; a high reconstructio error flags non-standard physiolgy 
 
     - Support Vector Machines (One class SVM):  Kernal boundaries. This is a semi-superivised guided classification mode which uses support vector classification with an RBF (kernal) to define high dimensional boundaries specifically when seperating clean and doping samples 
 
-    - Gaussian Mixture Model (GMM): based on Gaussian probability distributions. The targeted densities identified by Gaussian components are highly specific and associated tightly with mean and covariance with in the control labelled group fo athletes; this creates a doping probability distribution. 
+    - Label Spreading (LS) - explained previously.
 
+
+    
 
 When training the models, it is importnat to note that they are NOT trained as a large group, they are evaluated individually, and then the outputs and evaluated together. They use 2 distinct data sources which define the biological model feautre spaces and prediction generated.
     
@@ -84,9 +82,7 @@ TRAINING STRATEGY: each model in BOFA learns the data differently
 
     - Support Vector Machine/Classifier (SVM): trained on both ATHLETE_REF, GH_CONTROL
 
-    - Gaussian Mixture Model (GMM): trained on both ATHLETE_REF, GH_CONTROL 
-
-    - Isolation Forest (IF): trained on ATHLETE_REF only; to ensure that it remained sensitive to any structual deivaitons from the 'biological norm' population regardless of if the deviaiton is sepcifically mathcing the GH-control signal profile. This is the ONLY unserupvsied model used in BOFA.
+    - Label Spreading (LS): trained on both ATHLETE_REF (As unlabeled nodes) and GH_CONTROL (as labelled samples)
 
 
 5. CONSENSUS FRAMWORK & WEIGHTED SCORING 
@@ -98,17 +94,7 @@ The consensus counts and evaluations: eahc of the models identify their top 5 mo
 
     - Logic: the scoring system tallies up the number of binary flags (0,1) to create an EVALUATIVE/CONSENSUS score 
 
-    - Significance: A score of 3/3 indicates the athlete is most confidently expressed as an outlier according to the AE, IF, GMM, SVM; it indicates a high level of agreement 
-
-
-THE WEIGHTS AND HOW THEY ARE DETERMINED: since we use a semi-supervised model, not all models will be treated with equal weights 
-
-    - SVM/SVC: High weight beucase it is specifically trained on GH_CONTROL group to recongise a doping signal
-
-    - GMM: moderate weight beucase it generates a distribution for GH_CONTROl doping clusters individiually. This is an effective 'overlap' deteciton method
-
-    - IF/AE: low/moderate eights becuase they are unsupervised. They ensure that the general outliers within the larger population are NOT ingnored; they may not perfectly match signals and traces found in the 99 GH_CONTROL dataset, but they are still considered 'anomalous' when isolated from GH_CONTROL samples.
-
+    - Significance: A score of 3/3 indicates the athlete is most confidently expressed as an outlier according to the AE, LS, SVM; it indicates a high level of agreement 
 scores :
     Total Score = sum (Standardized[Score_{i}] x  Weight[{i}])
 
@@ -123,7 +109,7 @@ Anti-doping models CAN NOT be evaluated on their ACCURACY as the datset is imbal
 
     3. 3D t-SNE population map. High dimensional data (6D in the script used) is difficult for human interpretation. Therefore, a compromise of 3 dimensinos is generated. The reduced latent space of 3D provides a map of sigansl which can be used to visualise where GH_CONTROL cases lie in the general population (ATHLETE_REF)
 
-    4. PCA Scree Plot (elbow method). Justify the autoencoder bottleneck useage. In order to prove that 3-7 dimensions is sufficient for capturing the biological variance exhibited by signals, it is important to view that the compressed latent space co-ordinates have not lost essential information required to detect dopers as noise.
+    4. elbow plot - In order to prove that 3-7 dimensions is sufficient for capturing the biological variance exhibited by signals, it is important to view that the compressed latent space co-ordinates have not lost essential information required to detect dopers as noise.
 
 
  

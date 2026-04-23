@@ -1,45 +1,81 @@
+import os
+
+# --- 1. DATA PATHS ---
 class data:
     merged_df = r'C:/Users/jagmeet/bofa_data/merged_df.csv'
     final_results = r'C:/Users/jagmeet/bofa_data/model_results/flagged_athletes.csv'
     latent_full = r'C:/Users/jagmeet/bofa_data/model_results/latent_full.csv'
+
+# --- 2. BIOMARKER & COLUMN DEFINITIONS ---
 class processor:
-    # We use these for the initial cleanup and engineered ratio
+    # Added igf_pnp_ratio here so the Go script picks it up automatically
     features = ['age', 'sex', 'avg_pnp', 'avg_igf', 'igf_pnp_ratio']
     pnp_cols = ['ln_pnp_orion', 'ln_pnp_cis', 'ln_pnp_siemens', 'ln_pnp_initial', 'ln_pnp_mean', 'avg_pnp']
-    igf_cols = ['ln_igf_immuno', 'ln_igf_immulite', 'ln_igf_ms', 'ln_igf_ids', 'ln_igf_imt', 'ln_igf_initial', 'ln_igf_mean', 'avg_igf']
+    igf_cols = ['ln_igf_immuno', 'ln_igf_ms', 'ln_igf_ids', 'ln_igf_imt', 'ln_igf_initial', 'ln_igf_mean']
+    igf_pnp_cols = ['igf_pnp_ratio']
 
+# --- 3. CORE MODEL ARCHITECTURE ---
 class model_params:
     epochs = 150
-    latent_dim = 6    # Squeezing 5D input into 3D latent space
+    latent_dim = 6
     patience = 25
     batch_size = 32
-    l1_reg = 1e-5
+    random_state = 42
+    l1_reg = 1e-4   # Matches the SSAE script's sparsity requirement
+
+# --- 4. FORENSIC WEIGHTING ---
+class ssae:
+    reconstruction = 1.0 
+    # FIXED: Lowered to 0.0001 to "blind" the model to GH samples
+    classifier_weight = 0.0001  
 
 class ensemble_params:
-    gmm_components = 4
-    random_state = 42
-    iforest_contam = 0.05
-    svm_nu = 0.05
+    w_svm = 0.40 
+    w_ae  = 0.40 
+    w_ls  = 0.20 
     
-    # Adjusted based on your performance table
-    weights = {
-        'svm': 0.50,      # Increased: Since this has your best PR stats, it should lead.
-        'gmm': 0.35,      # Decreased: Use this to provide the "biological tail" logic.
-        'iforest': 0.10,  # Minimal: Keep as a tiny safety net for extreme outliers only.
-        'recon': 0.05      # Keep at 0.00 for now to see if the latent space models stabilize.
-    }
+    svm_C = 500.0     
+    svm_gamma = 0.01  
+    svm_weight = 50.0 
+    
+    ls_neighbors = 3        
+    ls_alpha = 0.1    
+
+# --- 5. FORENSIC BIOLOGY LIMITS ---
+class biology:
+    igf_std_limit = 2.0  
+    pnp_std_limit = 2.0
+    mad_threshold = 2.5 
+    volatility_quantile = 0.95    
+    male_cv_limit = 0.30          
+    female_cv_limit = 0.50        
+
+# --- 6. TARGET LABELS & CALIBRATION ---
 class calibration:
     target_recall = 0.70 
     positive_label = "GH_CONTROL"
     unlabeled_label = "ATHLETE_REF"
 
+# --- 7. DATASET COLUMN NAMING ---
+class features:
+    label_col = 'source'
+    id_col = 'id'
+    sex_col = 'sex'
+    date_col = 'date'
+
+# --- 8. VISUAL SHADES & PALETTES ---
 class shades:
-    C_BLUE = "#0072B2"    # Male / Reference
-    C_ORANGE = "#D55E00"  # Female / Contrast
-    C_GREEN = "#009E73"   # Success / Ensemble
-    C_BLACK = "#000000"   # Doped / Outlier
-
-class ssae:
-    reconstruction = 1.0
-    classifier = 5.0
-
+    # Consistent with your "Male Blue / Female Pink" islands
+    C_BLUE   = '#1f77b4' 
+    C_RED    = '#d62728' 
+    C_PINK   = '#e377c2' 
+    C_BLACK  = '#000000' 
+    C_GREY   = '#7f7f7f' 
+    C_GREEN  = '#27ae60' # Added for Fig 9 journey start points
+    
+    source_palette = {
+        'ATHLETE_REF': '#1f77b4',
+        'GH_CONTROL':  '#d62728',
+        'GH_ADMIN':    '#000000',
+        'POSITIVE':    '#d62728'
+    }

@@ -5,7 +5,7 @@ Feature selection + imputation (Python)
     ↓
 Train on clean athletes only
     ↓
-Apply models (IF, SVM, GMM)
+Apply models (SVM, LS)
     ↓
 Normalise scores
     ↓

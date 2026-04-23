@@ -1,81 +1,62 @@
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras import models, layers
+from tensorflow.keras import layers, models, regularizers, callbacks
 from pybofa.prep.config import model_params as mcfg
-from pybofa.prep.config import ssae as sscfg
 
-def run_ssae(train_data, full_data, labels, epochs):
-    """
-    labels: 1D array same length as train_data. 
-            0 for unknown/general, 1 for GH_CONTROL.
-    """
-    input_dim = train_data.shape[1]
-    init = tf.keras.initializers.GlorotUniform(seed=42)
-    hidden_dim = int((input_dim + mcfg.latent_dim) / 2) + 4 
+def run_ssae(x_train, x_test, y_labels):
+    input_dim = x_train.shape[1]
+    latent_dim = mcfg.latent_dim # Now 6D based on your config
 
-    # --- ARCHITECTURE ---
-    inputs = layers.Input(shape=(input_dim,), name="input_layer")
+    input_layer = layers.Input(shape=(input_dim,))
     
-    # ENCODER
-    x = layers.Dense(hidden_dim, activation='relu', kernel_initializer=init)(inputs)
-    x = layers.Dropout(0.1)(x) 
+    # Encoder: Expanded to handle the 6D flow
+    x = layers.Dense(16, activation='relu')(input_layer)
+    x = layers.BatchNormalization()(x)
+    x = layers.Dense(12, activation='relu')(x)
+    x = layers.BatchNormalization()(x)
     
-    # BOTTLENECK (The shared representation)
-    bottleneck = layers.Dense(mcfg.latent_dim, activation='linear', 
-                              kernel_initializer=init, name='bottleneck')(x)
+    # Latent Bottleneck: The 6D Forensic Space
+    latent = layers.Dense(
+        latent_dim, 
+        activation='relu', 
+        name='latent',
+        activity_regularizer=regularizers.l1(mcfg.l1_reg)
+    )(x)
     
-    # PATH A: DECODER (Reconstruction)
-    x_dec = layers.Dense(hidden_dim, activation='relu', kernel_initializer=init)(bottleneck)
-    reconstruction_output = layers.Dense(input_dim, activation='linear', 
-                                         kernel_initializer=init, name='reconstruction')(x_dec)
+    # Decoder: Mirroring the Encoder
+    x = layers.Dense(12, activation='relu')(latent)
+    x = layers.BatchNormalization()(x)
+    x = layers.Dense(16, activation='relu')(x)
+    output_layer = layers.Dense(input_dim, activation='linear')(x)
     
-    # PATH B: CLASSIFIER (Supervision head)
-    classifier_output = layers.Dense(1, activation='sigmoid', name='classifier')(bottleneck)
-
-    # --- MODEL DEFINITION ---
-    # We define the order here: [0] is reconstruction, [1] is classifier
-    ssae = models.Model(inputs=inputs, outputs=[reconstruction_output, classifier_output])
-    encoder = models.Model(inputs, bottleneck)
+    model = models.Model(input_layer, output_layer)
+    encoder = models.Model(input_layer, latent)
     
-    # --- COMPILATION ---
-    # Using lists here ensures the order matches the Model definition
-    ssae.compile(
-        optimizer='adam',
-        loss=['mse', 'binary_crossentropy'],
-        loss_weights=[sscfg.reconstruction, sscfg.classifier]
+    # STABILIZER: Slow learning rate = Smooth Elbow Plot
+    lr_stabilizer = callbacks.ReduceLROnPlateau(
+        monitor='loss', factor=0.2, patience=10, min_lr=1e-7
     )
-    #compiler
     
-    # --- PREPARING LABELS & WEIGHTS ---
-    # Flatten and ensure float32 for Keras compatibility
-    y_labels = np.asarray(labels).astype('float32').reshape((-1, 1))
-
-    # We provide a list of weights matching the output order:
-    # 1. Weight 1.0 for everyone on reconstruction
-    # 2. Weight 0.0/1.0 for classifier (only known samples nudge the latent space)
+    # Weighting: "Blinds" the model to suspects
+    weights = np.where(y_labels == 1, 0.0001, 1.0)
     
-    sample_weights = [
-        np.ones(len(train_data), dtype="float32"), # Weight for reconstruction output
-        y_labels.flatten() # Weight for classifier output
-    ]
-
-    # --- TRAINING ---
-    ssae.fit(
-        x=train_data, 
-        y=[train_data, y_labels], # Passing as a list matches the output order
-        sample_weight=sample_weights, 
-        epochs=epochs, 
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(learning_rate=0.0005), 
+        loss='mse'
+    )
+    
+    history = model.fit(
+        x_train, x_train, 
+        sample_weight=weights, 
+        epochs=mcfg.epochs, 
         batch_size=mcfg.batch_size, 
+        callbacks=[lr_stabilizer],
         verbose=0, 
         shuffle=True
     )
     
-    # --- OUTPUTS ---
-    # Use verbose=0 here to keep the final output clean
-    recons, _ = ssae.predict(full_data, verbose=0)
-    scores = np.mean(np.square(full_data - recons), axis=1)
+    reconstructed = model.predict(x_test, verbose=0)
+    latent_space = encoder.predict(x_test, verbose=0)
+    scores = np.mean(np.square(x_test - reconstructed), axis=1)
     
-    latent_train = encoder.predict(train_data, verbose=0)
-    latent_full = encoder.predict(full_data, verbose=0)
-    
-    return scores, latent_train, latent_full
+    return scores, latent_space, model, reconstructed, encoder, history
