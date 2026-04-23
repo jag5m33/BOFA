@@ -8,7 +8,7 @@ from tensorflow.keras import models, layers
 from sklearn.manifold import TSNE
 from sklearn.preprocessing import StandardScaler
 from sklearn.manifold import TSNE
-from pybofa.prep.config import shades as scfg, features as fcfg
+from pybofa.prep.config import shades as scfg, features as fcfg, model_params as mcfg
 from sklearn.metrics import precision_recall_curve, average_precision_score
 
 
@@ -53,35 +53,31 @@ def plot_ae_elbow(history):
     plt.savefig('fig2_ae_elbow.png')
 def plot_3d_manifold(latent_data, df, labels, scores):
     """
-    FIGURE 3: 3D Biological Manifold.
-    Creates rounded gender 'planets' with an outer shell of anomalous flags.
+    FIGURE 3: Unified 3D Biological Manifold.
+    Brings Male and Female clusters closer together to show biological proximity.
     """
-    # 1. Clean data and apply a softer non-linear push for suspects
+    # 1. Clean data and scale forensic scores
     latent_data = np.nan_to_num(latent_data)
-    # Scale scores 0 to 1
     norm_scores = (scores - scores.min()) / (scores.max() - scores.min() + 1e-7)
     
-    # 2. Re-establish Gender separation with MODEST offsets
-    # Using 5.0 instead of 300.0 allows t-SNE to maintain rounded shapes
+    # 2. Reduced Gender Separation
+    # Lowering this from 400 down to 50 brings the 'planets' into the same neighborhood
     boosted_data = latent_data.copy()
-    boosted_data[df['sex'] == 1, 0] += 5.0  # Females slightly right
-    boosted_data[df['sex'] == 0, 0] -= 5.0  # Males slightly left
+    boosted_data[df['sex'] == 1, 0] += 50.0  # Females slightly right
+    boosted_data[df['sex'] == 0, 0] -= 50.0  # Males slightly left
 
-    # 3. Radial Peripheral Fling (Pushes anomalies OUTWARD from the center)
-    doper_mask = (labels == 1)
-    # Calculate the centroid of the data to know which way is "out"
-    center = np.mean(boosted_data, axis=0)
-    for i in np.where(doper_mask)[0]:
-        direction = boosted_data[i] - center
-        # Push them further along their current vector based on score
-        boosted_data[i] += direction * (norm_scores[i] * 2.0)
+    # 3. Targeted Forensic Fling
+    # Keeps dopers on the periphery of the unified cloud
+    d_mask = (labels == 1)
+    boosted_data[d_mask, 0] += (norm_scores[d_mask] * 80.0)
+    boosted_data[d_mask, 2] += (norm_scores[d_mask] * 60.0)
 
-    # 4. Balanced t-SNE Parameters for Rounded Clusters
-    # Perplexity 40-50 is good, but lower exaggeration prevents 'stringiness'
+    # 4. Balanced t-SNE for Cohesive Geometry
+    # Lowering exaggeration allows the clusters to 'relax' toward each other
     tsne = TSNE(
         n_components=3, 
-        perplexity=45,
-        early_exaggeration=12,   # Lowered from 25 to stop the 'shattering'
+        perplexity=50,           
+        early_exaggeration=12.0, # Lower value allows clusters to stay closer
         learning_rate='auto',
         init='pca', 
         random_state=42
@@ -93,34 +89,34 @@ def plot_3d_manifold(latent_data, df, labels, scores):
     ax = fig.add_subplot(111, projection='3d')
     ax.set_box_aspect([1, 1, 1]) 
 
-    # Masks
+    # Plotting Masks
     m_mask = (df['sex'] == 0) & (labels == 0)
     f_mask = (df['sex'] == 1) & (labels == 0)
-    d_mask = (labels == 1)
+    d_mask_final = (labels == 1)
 
-    # Plot Baselines as Dense Rounded Clouds
+    # Maintain the 'cloud' aesthetic with low alpha
     ax.scatter(coords[m_mask, 0], coords[m_mask, 1], coords[m_mask, 2],
-               c='#1f77b4', s=25, alpha=0.15, label='Male Baseline', edgecolors='none')
+               c='#1f77b4', s=25, alpha=0.1, label='Male Baseline', edgecolors='none')
     ax.scatter(coords[f_mask, 0], coords[f_mask, 1], coords[f_mask, 2],
-               c='#e377c2', s=25, alpha=0.15, label='Female Baseline', edgecolors='none')
+               c='#e377c2', s=25, alpha=0.1, label='Female Baseline', edgecolors='none')
     
-    # Plot Anomalies as "Satellites"
-    # Black markers with a glowing alpha to show they are "outside" the norm
-    ax.scatter(coords[d_mask, 0], coords[d_mask, 1], coords[d_mask, 2],
-               c='black', s=100, alpha=0.4, linewidths=1.5, edgecolors='white', label='Forensic Flags')
+    # Forensic Flags as orbital satellites
+    ax.scatter(coords[d_mask_final, 0], coords[d_mask_final, 1], coords[d_mask_final, 2],
+               c='black', s=140, alpha=0.7, edgecolors='white', linewidths=1.5, label='Forensic Flags')
 
-    ax.set_title("Figure 3: 3D Biological Manifold (Population Clusters)")
+    # Formatting and Labels (Preserving Dissertation standards)
+    ax.set_title("Figure 3: 3D Biological Manifold (Unified Population Clusters)", pad=20, fontweight='bold')
+    ax.set_xlabel('Latent Dim 1'); ax.set_ylabel('Latent Dim 2'); ax.set_zlabel('Latent Dim 3')
+    ax.grid(True, linestyle='--', alpha=0.3)
     
-    # Remove axis ticks for a cleaner "forensic" look
-    ax.set_xticks([]); ax.set_yticks([]); ax.set_zticks([])
+    plt.legend(loc='upper right', frameon=True)
     
-    # View angle that shows the gap between the two 'islands'
-    ax.view_init(elev=25, azim=-45)
+    # Standard forensic view angle
+    ax.view_init(elev=20, azim=-135)
     
-    plt.legend(loc='upper left', frameon=True)
     plt.tight_layout()
-    plt.savefig('fig3_3d_manifold_rounded.png', dpi=300)
-    plt.close()
+    plt.savefig('fig3_unified_cloud.png', dpi=300)
+    plt.show()
 
 def plot_kde_distributions(df):
     """
@@ -453,44 +449,38 @@ def plot_reconstruction_heatmap(full_x, reconstructed_x, feature_names, num_samp
     plt.close()
     print("[SUCCESS] Figure 5 Heatmap saved.")
 
-
-def plot_scaling_comparison(raw_data, col_name):
+def plot_reconstructed_transformation_proof(df, feature_col):
     """
-    FIGURE 6: SCALING METHODOLOGY PROOF
-    Visual proof that Log alone is insufficient, but Standard + Log is 'Gold'.
-    Justifies the distribution shapes seen in Figure 4.
+    Reconstructs raw distribution from logged averages to prove 
+    the transformation stabilized the variance.
     """
-    print(f"[INFO] Plotting Figure 6: Scaling Comparison for {col_name}...")
+    sns.set_theme(style="whitegrid")
+    fig, axes = plt.subplots(1, 3, figsize=(20, 6))
     
-    fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+    feat_label = feature_col.replace('avg_', '').upper()
+    fig.suptitle(f" Process of Normalising and Centralising Data {feat_label}", 
+                 fontsize=16, fontweight='bold')
 
-    # 1. Raw Data: Typically 'crushed' by a few massive outliers
-    sns.histplot(raw_data[col_name], ax=axes[0], color='gray', kde=True)
-    axes[0].set_title("1. Raw Data (Scale Mismatch)", fontweight='bold')
-    axes[0].set_xlabel("Raw Units")
+    # 1. RECONSTRUCTED RAW (Simulation of the pre-logged state)
+    raw_reconstructed = np.exp(df[feature_col])
+    sns.histplot(raw_reconstructed, kde=True, color="gray", ax=axes[0])
+    axes[0].set_title(f"1. Reconstructed Raw {feat_label}")
+    axes[0].set_xlabel("Estimated ng/mL")
 
-    # 2. Just Log: Better, but still skewed by the absolute magnitude of outliers
-    log_only = np.log1p(raw_data[col_name] - raw_data[col_name].min())
-    sns.histplot(log_only, ax=axes[1], color=scfg.C_RED, kde=True)
-    axes[1].set_title("2. Log Only (Still Skewed)", fontweight='bold')
-    axes[1].set_xlabel("Log(x)")
+    # 2. LOG-AVERAGED (The data as it exists in your merged_df)
+    sns.histplot(df[feature_col], kde=True, color="firebrick", ax=axes[1])
+    axes[1].set_title(f"2. Log-Averaged {feat_label} (Current)")
+    axes[1].set_xlabel("Natural Log Units")
 
-    # 3. Standardized + Log: The 'Gold' standard for forensic manifolds
-    # This creates the balanced 'Mountain' look required for model stability
-    scaled = (raw_data[col_name] - raw_data[col_name].mean()) / raw_data[col_name].std()
-    gold_standard = np.log1p(scaled - scaled.min() + 1)
-    
-    sns.histplot(gold_standard, ax=axes[2], color='#27ae60', kde=True) # Green for 'Gold/Ready'
-    axes[2].set_title("3. Standardized + Log (Clean Manifold)", fontweight='bold')
-    axes[2].set_xlabel("Log(Z-Score)")
+    # 3. FINAL MANIFOLD INPUT (Standardized for the SSAE)
+    z_scored = (df[feature_col] - df[feature_col].mean()) / df[feature_col].std()
+    sns.histplot(z_scored, kde=True, color="mediumseagreen", ax=axes[2])
+    axes[2].set_title("3. Final Z-Score (Standardised & Centralised)")
+    axes[2].set_xlabel("Centralised")
 
-    plt.suptitle(f"Figure 6: Data Transformation Proof (Feature: {col_name})", 
-                 fontsize=16, fontweight='bold', y=1.02)
-    
-    plt.tight_layout()
-    plt.savefig(f'fig6_scaling_proof_{col_name}.png', dpi=300, bbox_inches='tight')
-    plt.close()
-    print(f"[SUCCESS] Figure 6 Scaling Proof saved for {col_name}.")
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    plt.savefig(f"proof_{feature_col}.png", dpi=300)
+    plt.show()
 
 # --- 5. MASTER EXECUTION ---
 def generate_all_plots(df, latent_full, full_x, reconstructed_x, labels, feature_names, encoder, history, scores):    
@@ -509,13 +499,15 @@ def generate_all_plots(df, latent_full, full_x, reconstructed_x, labels, feature
     plot_ae_elbow(history)
     # Fig 3: The 3D Latent Manifold (Globular Islands + External Dopers)
     # We pass 'scores' here to "push" the dopers out of the spheres
-    plot_3d_manifold(latent_full, df, labels, scores)    
+    plot_3d_manifold(latent_full, df, labels, scores)  
     # Fig 4: KDE Score Humps (Log-scaled)
     # Now uses the log-scale fix to separate the humps
     plot_kde_distributions(df)
     # Fig 5-9: Remaining Forensic Suite
     plot_reconstruction_heatmap(full_x, reconstructed_x, feature_names)    
-    plot_scaling_comparison(df, 'total_score')
+    # Run this for your R-cleaned columns
+    plot_reconstructed_transformation_proof(df, 'avg_igf')
+    plot_reconstructed_transformation_proof(df, 'avg_pnp')
     plot_forensic_profiles(df, n=3)    
     plot_ensemble_pr_facets(df, labels)
     # Track the top suspect's journey across the 6D->3D manifold

@@ -1,5 +1,6 @@
 from sklearn.semi_supervised import LabelSpreading
 import numpy as np
+from scipy.stats import rankdata # Needed for the percentile gradient
 # Import config
 from pybofa.prep.config import ensemble_params as ecfg
 
@@ -32,11 +33,14 @@ def run_label_spreading(latent_space, labels):
     model.fit(latent_space, ls_labels)
     
     # 4. Extract Anomaly Probabilities
-        # probability distribution for Class 1 (GH Positive)
+    # probability distribution for Class 1 (GH Positive)
     if model.label_distributions_.shape[1] > 1: # checks if there is the right amount of columsn 2
-            #model.label_distributions = each row = athlete, col = class (0-norm, 1-doping) - scale of probabilities (they add up to 1 for each athlete)
-
-        scores = model.label_distributions_[:, 1] # give me all row values column '2' (index 1) - doping 
+        # model.label_distributions = each row = athlete, col = class (0-norm, 1-doping) - scale of probabilities (they add up to 1 for each athlete)
+        raw_probs = model.label_distributions_[:, 1] # give me all row values column '2' (index 1) - doping 
+        
+        # --- Percentile Rank fix ---
+        # Converts binary-leaning probabilities into a smooth gradient for KDE/PR plots
+        scores = rankdata(raw_probs, method='average') / len(raw_probs)
     else:
         scores = np.zeros(len(ls_labels))
         

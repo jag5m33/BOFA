@@ -26,7 +26,6 @@ class model_params:
 # --- 4. FORENSIC WEIGHTING ---
 class ssae:
     reconstruction = 1.0 
-    # FIXED: Lowered to 0.0001 to "blind" the model to GH samples
     classifier_weight = 0.0001  
 
 class ensemble_params:
