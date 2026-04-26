@@ -65,8 +65,6 @@ def load_and_preprocess():
 # full_x is the cleaned and preprocessed feature matrix ready for modeling
 # feature_list is the list of features used in the model, which can be useful for later reference in visualizations and analysis. also including vol_cols 
 
-
-
 def robust_standardize(scores, labels):
     # Determine 'Normal' bounds using only Reference athletes
         # for all 0 labels (reference athletes), calculate the median and IQR to define a robust scale
@@ -115,7 +113,7 @@ if __name__ == "__main__":
         # This ensures that the final scores are on a comparable scale and that the ensemble average is meaningful.
     df['ae_score'] = robust_standardize(ae_raw, labels)
     df['svm_score'] = robust_standardize(svm_raw, labels)
-    df['ls_score'] = robust_standardize(ls_raw, labels)
+    df['ls_score'] = ls_raw
     
     # Consensus Average (Overall athlete suspicion score): simple average of the three model scores, then re-standardized for interpretability
     df['total_score'] = (df['ae_score'] + df['svm_score'] + df['ls_score']) / 3
@@ -133,8 +131,8 @@ if __name__ == "__main__":
         # np.inf, or -np.inf remove infinity values and replaces with 0 in any of the score cols in the list above.
     df[score_cols] = df[score_cols].fillna(0).replace([np.inf, -np.inf], 0)
 
-    # 4. run visualisation script (Figures 1-9)
-    print("--- Step 4: Rendering Dissertation Graphics ---")
+    # 4. run visualisation script 
+    print("--- Step 4: generating dissertation graphics ---")
     viz.generate_all_plots(
         df=df, 
         latent_full=latent_full, 

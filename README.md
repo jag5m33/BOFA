@@ -46,7 +46,7 @@ This structure ensures that data processing modelling and configuration steps ar
 
         ii Categorical enconding: sex encoding as binary (0 = male, 1 = female)
 
-        iv. additional source column added: GH_CONTROL (for all gh_administed samples - 99), ATHLETE_REF (for all other remaining athletes to be assessed for doping based on bioamrker scores)
+        iii. additional source column added: GH_CONTROL (for all gh_administed samples - 99), ATHLETE_REF (for all other remaining athletes to be assessed for doping based on bioamrker scores)
 
 4. MODELLING PIPELINE
 

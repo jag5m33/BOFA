@@ -37,8 +37,9 @@ class ensemble_params:
     svm_gamma = 0.01  
     svm_weight = 50.0 
     
-    ls_neighbors = 3        
-    ls_alpha = 0.1    
+       
+    ls_alpha = 0.8
+    ls_neighbours = 15
 
 # --- 5. FORENSIC BIOLOGY LIMITS ---
 class biology:
@@ -70,7 +71,7 @@ class shades:
     C_PINK   = '#e377c2' 
     C_BLACK  = '#000000' 
     C_GREY   = '#7f7f7f' 
-    C_GREEN  = '#27ae60' # Added for Fig 9 journey start points
+    C_GREEN  = '#27ae60' 
     
     source_palette = {
         'ATHLETE_REF': '#1f77b4',

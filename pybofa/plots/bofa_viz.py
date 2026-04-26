@@ -11,7 +11,7 @@ from sklearn.manifold import TSNE
 from pybofa.prep.config import shades as scfg, features as fcfg, model_params as mcfg
 from sklearn.metrics import precision_recall_curve, average_precision_score
 
-
+#*use DPI for all plots, creates a higher definition plot
 # Config Imports
 from pybofa.prep.config import shades as scfg  
 from pybofa.prep.config import biology as bcfg
@@ -19,18 +19,19 @@ from pybofa.prep.config import biology as bcfg
 # Global style configuration
 plt.style.use('seaborn-v0_8-whitegrid')
 
-# --- 1. POPULATION & CALIBRATION (Fig 1 & 2) ---
+# 1. population graphs and AE stats (prep for modelling and later metrics)
 def plot_abp_sample_distribution(df):
     """
-    FIGURE 1: ABP SAMPLE COUNTS
-    Uses scfg.C_BLUE for consistency with the baseline 'Normal' theme.
+    Athlete Biological Passport sample counts
+    Uses shades scfg.* from config, established for consistency
     """
-    print("[INFO] Plotting Figure 1: Sample Distribution...")
-    # Group by athlete ID to count their specific longitudinal samples
+    print(" [Checkpoint] Plotting ABP Sample Distribution")
+    # athlete IDs grouped to count specific longitudinal samples counts
     sample_counts = df.groupby('id').size().value_counts().sort_index()
     
-    plt.figure(figsize=(10, 6))
-    # ENFORCED: Using scfg.C_BLUE for the population bars to represent 'Normal' reference
+    plt.figure(figsize=(10, 6)) # figure size
+    # scfg.C_BLUE shades config --> representative of 'normal' population 
+    # representented with BAR plot, for cateogrical vs numerical discrete plotting
     bars = plt.bar(sample_counts.index, sample_counts.values, 
                    color=scfg.C_BLUE, edgecolor='black', alpha=0.7)
     
@@ -39,91 +40,102 @@ def plot_abp_sample_distribution(df):
     plt.xlabel('Number of Samples Collected')
     plt.ylabel('Number of Athletes')
     plt.tight_layout()
-    plt.savefig('fig1_abp_distribution.png', dpi=300)
+    plt.savefig('abp_distribution.png', dpi=300)
     plt.close()
 
 def plot_ae_elbow(history):
-    # Just plot the training loss from the history object
+    """
+    Post-SSAE training, use history object with records training loss
+    training loss AKA MSE (mean squared error) - reconstruction error of SSAE
+    Depicts how well the SSAE encoded info into latent vectors
+    """
+    # plot training loss over saved history (from ssae scirpt) - over 150 epochs 
     plt.figure(figsize=(10, 5))
-    plt.plot(history.history['loss'], label='Training Loss', color='#1f77b4', lw=2)
-    plt.title("SSAE Information Compression (Convergence)")
+    plt.plot(history.history['loss'], label='Training Loss', color=scfg.C_BLUE, lw=2)
+    
+    plt.title("SSAE Training loss")
     plt.xlabel("Epochs")
     plt.ylabel("MSE")
+
     plt.grid(True, alpha=0.3)
-    plt.savefig('fig2_ae_elbow.png')
+    plt.savefig('ae_elbow.png')
+    plt.close()
+
 def plot_3d_manifold(latent_data, df, labels, scores):
     """
-    FIGURE 3: Unified 3D Biological Manifold.
-    Brings Male and Female clusters closer together to show biological proximity.
+    3D Biological representation of latent bottleneck layer.
+    Compared to origonal, Male and Female clusters spread apart, but remained seperated
     """
-    # 1. Clean data and scale forensic scores
+    # use the cleaned and preprocessed data and use scale scores from SSAE
     latent_data = np.nan_to_num(latent_data)
+    
+    # normalise by indiviual column value
     norm_scores = (scores - scores.min()) / (scores.max() - scores.min() + 1e-7)
     
-    # 2. Reduced Gender Separation
-    # Lowering this from 400 down to 50 brings the 'planets' into the same neighborhood
+    # ensure the clusters are more spread apart but still within a scalable proximity with one another 
     boosted_data = latent_data.copy()
-    boosted_data[df['sex'] == 1, 0] += 50.0  # Females slightly right
-    boosted_data[df['sex'] == 0, 0] -= 50.0  # Males slightly left
+    boosted_data[df['sex'] == 1, 0] += 50.0  # Females right
+    boosted_data[df['sex'] == 0, 0] -= 50.0  # Males left
 
-    # 3. Targeted Forensic Fling
     # Keeps dopers on the periphery of the unified cloud
+    # those which are labelled 1, they are outside the NORMAL distribution
     d_mask = (labels == 1)
     boosted_data[d_mask, 0] += (norm_scores[d_mask] * 80.0)
     boosted_data[d_mask, 2] += (norm_scores[d_mask] * 60.0)
 
-    # 4. Balanced t-SNE for Cohesive Geometry
-    # Lowering exaggeration allows the clusters to 'relax' toward each other
+    # t-SNE parameters changed to optomised visualisation
+    # lower exaggeration ensures that the clusters are not completely mixed or completely polar
     tsne = TSNE(
         n_components=3, 
         perplexity=50,           
-        early_exaggeration=12.0, # Lower value allows clusters to stay closer
+        early_exaggeration=12.0, 
         learning_rate='auto',
         init='pca', 
-        random_state=42
+        random_state=42 # same random states
     )
     coords = tsne.fit_transform(boosted_data)
 
-    # 5. Render Final Visualization
+    # Final visualisation for diss.
     fig = plt.figure(figsize=(12, 10), facecolor='white')
     ax = fig.add_subplot(111, projection='3d')
-    ax.set_box_aspect([1, 1, 1]) 
+    ax.set_box_aspect([1, 1, 1]) # grid box size aspect 
 
     # Plotting Masks
     m_mask = (df['sex'] == 0) & (labels == 0)
     f_mask = (df['sex'] == 1) & (labels == 0)
     d_mask_final = (labels == 1)
 
-    # Maintain the 'cloud' aesthetic with low alpha
+    # AXIS parameters - for each parameter establish visualisation factors (male, female, dopers)
     ax.scatter(coords[m_mask, 0], coords[m_mask, 1], coords[m_mask, 2],
                c='#1f77b4', s=25, alpha=0.1, label='Male Baseline', edgecolors='none')
     ax.scatter(coords[f_mask, 0], coords[f_mask, 1], coords[f_mask, 2],
                c='#e377c2', s=25, alpha=0.1, label='Female Baseline', edgecolors='none')
-    
-    # Forensic Flags as orbital satellites
     ax.scatter(coords[d_mask_final, 0], coords[d_mask_final, 1], coords[d_mask_final, 2],
                c='black', s=140, alpha=0.7, edgecolors='white', linewidths=1.5, label='Forensic Flags')
 
-    # Formatting and Labels (Preserving Dissertation standards)
-    ax.set_title("Figure 3: 3D Biological Manifold (Unified Population Clusters)", pad=20, fontweight='bold')
-    ax.set_xlabel('Latent Dim 1'); ax.set_ylabel('Latent Dim 2'); ax.set_zlabel('Latent Dim 3')
+    # formating visualisations and labelling
+    ax.set_title("3D SSAE Latent Space (Bottleneck layer)", pad=20, fontweight='bold')
+
+    ax.set_xlabel('Latent Dim 1'); 
+    ax.set_ylabel('Latent Dim 2'); 
+    ax.set_zlabel('Latent Dim 3')
     ax.grid(True, linestyle='--', alpha=0.3)
     
     plt.legend(loc='upper right', frameon=True)
     
-    # Standard forensic view angle
-    ax.view_init(elev=20, azim=-135)
+    # angle to view the plot from
+    #ax.view_init(elev=20, azim=-135)
     
     plt.tight_layout()
-    plt.savefig('fig3_unified_cloud.png', dpi=300)
+    plt.savefig('t_SNE.png', dpi=300)
     plt.show()
 
 def plot_kde_distributions(df):
     """
-    Figure 4: Forensic Signal (Normalized Density)
-    Plots the Log-then-Standardized visualization scores for all models.
+    KDE plot - kernal density plots: visualise the porbability density of data in distribution format 
+    Similar to histograms, but show the both GH_CONTROl and ATHELTE_REF distribution for each model
     """
-    # Use the visualization columns created in the main script
+    # Use the visualization columns from main script
     viz_cols = ['ae_viz', 'svm_viz', 'ls_viz', 'total_viz']
     titles = [
         'Model A: SSAE Reconstruction', 
@@ -131,111 +143,105 @@ def plot_kde_distributions(df):
         'Model C: Label Spreading', 
         'Consensus Ensemble'
     ]
-    
-    # Create a 1x4 panel for side-by-side comparison
+    # primerily focus on consensus ensemble!
+
+    # figure size = 1x4 panel for side-by-side comparison
     fig, axes = plt.subplots(1, 4, figsize=(22, 6), facecolor='white')
-    palette = {'ATHLETE_REF': '#1f77b4', 'GH_CONTROL': '#d62728'}
+    palette = {'ATHLETE_REF': scfg.C_BLUE, 'GH_CONTROL': scfg.C_RED}
     
     for i, col in enumerate(viz_cols):
-        # The actual KDE plot
+        # KDE plotting parameters
         sns.kdeplot(
             data=df, x=col, hue='source',
             fill=True, 
             ax=axes[i],
-            bw_adjust=0.6,    # Smooths out the distribution for better visual humps
-            common_norm=False, # Allows the small doping group to be visible
+            bw_adjust=0.6,    # Smooths out the distribution for easier visualisation interpretation
+            common_norm=False, # ensures dopers are visible
             alpha=0.4,
             palette=palette
         )
         
-        # Add a "Forensic Threshold" line
-        # Since we re-standardized, 2.0 is a strong outlier on this visual scale
-        axes[i].axvline(x=2.0, color='black', linestyle='--', label='Suspicion Threshold')
-        
-        # Formatting
+        # visualisation formatting
         axes[i].set_title(titles[i], fontweight='bold', fontsize=12)
-        axes[i].set_xlabel("Relative Forensic Evidence (Normalized)")
+        axes[i].set_xlabel("Signal Length (Normalised Scale)")
         axes[i].set_ylabel("Density")
         
-        # Keep the legend only on the final plot to save space
+        # remove legend for all plots other than last to ensure it is not unnecessarily repeated
         if i != 3:
             axes[i].get_legend().remove()
     
-    plt.suptitle("Figure 4: Forensic Signal Separation across Detection Architectures", 
+    plt.suptitle("Signal Separation across Anomaly Detection Models and Consensus", 
                  fontsize=16, fontweight='bold', y=1.02)
     
     plt.tight_layout()
-    plt.savefig('fig4_multi_model_kde.png', dpi=300, bbox_inches='tight')
-    print("[SUCCESS] Figure 4 saved: fig4_multi_model_kde.png")
+    plt.savefig('multi_model_kde.png', dpi=300, bbox_inches='tight')
+    plt.close()
     
-
-# --- 3. FORENSIC PROFILING (Fig 7) ---
 def plot_forensic_profiles(df, n=3):
     """
-    FIGURE 7: CONSENSUS CASE STUDIES
-    Enforces scfg colors: Biological line (Black) and Ensemble Spike (Red).
-    Includes 'Ghost Lines' for SSAE, SVM, and LS to show model agreement.
+    ABS case studies who also stand out in consensus model
+    Uses shades-CONFIG; Biological line (Black) and Ensemble Spike (Red).
+    Includes lines from agreement between SSAE, SVM, and LS
     """
-    print(f"[INFO] Generating Top {n} Forensic Profiles...")
+    print(f"[Checkpoint] Generating Top {n} Profiles")
     
-    # Ensure date format and calculate a ranking metric for interesting cases
+    # use data formatting and use to calcualte metrics for top {n} cases
     df['date'] = pd.to_datetime(df['date'])
     
-    # We prioritize athletes from the Reference group who show the highest suspicion
-    # Evidence rank combines the consensus score with biological volatility
+    # focus on ref group who show the high anomaly score
+    # ranking combines the consensus score with biological volatility (ABP scoring)
     df['evidence_rank'] = df['total_score'] * df['ae_score'] 
     
-    # Identify unique IDs for athletes not in the GH_CONTROL group with highest spikes
+    # use athletes IDs NOT in GH_CONTROL group with highest spikes
     top_ids = df[df['source'] == 'ATHLETE_REF'].groupby('id')['evidence_rank'].max().sort_values(ascending=False).head(n).index
 
     for uid in top_ids:
-        data = df[df['id'] == uid].sort_values('date')
+        data = df[df['id'] == uid].sort_values('date')  #sort by date
         fig, ax1 = plt.subplots(figsize=(12, 6))
         
-        # --- PRIMARY Y-AXIS: BIOLOGY ---
-        # ENFORCED: Biological marker in C_BLACK for the 'truth' line
+        # Biological marker in C_BLACK for the baseline 
         ax1.plot(data['date'], data['igf_pnp_ratio'], 'o-', color=scfg.C_BLACK, 
                  linewidth=2, label='IGF/PNP Ratio (Raw)')
-        ax1.set_ylabel('Biological Levels', fontweight='bold')
+        ax1.set_ylabel('Biological Level', fontweight='bold')
         ax1.grid(True, alpha=0.2)
         
-        # --- SECONDARY Y-AXIS: FORENSIC SCORE ---
+        # second part of y axis - shows the athlete score relative to the baseline established
         ax2 = ax1.twinx()
         
-        # ENFORCED: Ensemble Spike in C_RED to highlight the 'Hit'
-        ax2.scatter(data['date'], data['total_score'], color=scfg.C_RED, marker='X', s=250, 
+        # Ensemble Spike in C_RED to highlight the 'Hit'
+        ax2.scatter(data['date'], data['total_score'], color=scfg.C_RED, s=250, 
                     edgecolors='black', label='Ensemble Spike', zorder=10)
         
-        # GHOST LINES: Visualizing individual model contributions
+        # lines to show individual model established values 
         ax2.plot(data['date'], data['ae_score'], '--', color=scfg.C_BLUE, alpha=0.3, label='SSAE Signal')
-        ax2.plot(data['date'], data['svm_score'], '--', color='#27ae60', alpha=0.3, label='SVM Signal')
-        ax2.plot(data['date'], data['ls_score'], '--', color='#e67e22', alpha=0.3, label='LS Signal')
+        ax2.plot(data['date'], data['svm_score'], '--', color=scfg.C_GREEN, alpha=0.3, label='SVM Signal')
+        ax2.plot(data['date'], data['ls_score'], '--', color= scfg.C_PINK, alpha=0.3, label='LS Signal')
         
-        # Forensic Threshold (MAD-based limit)
+        
         ax2.axhline(y=3.0, color=scfg.C_RED, linestyle=':', alpha=0.5, label='Forensic Limit (3.0 MAD)')
-        ax2.set_ylabel('Suspicion Score (Standardized)', color=scfg.C_RED, fontweight='bold')
+        ax2.set_ylabel('Anomaly Score (Standardised)', color=scfg.C_RED, fontweight='bold')
 
         plt.title(f'Anomalous Profile (Athlete: {uid})', fontsize=14, fontweight='bold')
         
-        # Merge legends from both axes
+        # combine legends across both Y axis 
         h1, l1 = ax1.get_legend_handles_labels()
         h2, l2 = ax2.get_legend_handles_labels()
         ax1.legend(h1+h2, l1+l2, loc='upper left', ncol=2, frameon=True)
         
         plt.tight_layout()
-        plt.savefig(f'fig7_profile_{uid}.png', dpi=300)
+        plt.savefig(f'profile_{uid}.png', dpi=300)
         plt.close()
-        print(f"[SUCCESS] Saved profile for athlete {uid}")
+        print(f"athlete {uid} profile plotting completed")
 
 def plot_ensemble_pr_facets(df, labels):
     """
-    FIGURE 8: PRECISION-RECALL (PR) FACETS
-    Evaluates detection performance across SSAE, SVM, LS, and Ensemble Consensus.
-    Standard linear standardization ensures realistic PR curves.
+    PRECISION-RECALL (PR) plots
+    Evaluates detection performance across SSAE, SVM, LS, to form a Ensemble Consensus.
+    Z score normalisation ensures PR curves are comparable
     """
-    print("[INFO] Plotting Figure 8: Precision-Recall Comparison...")
+    print("[Checkpoint] Plotting Precision-Recall curves") 
     
-    # Map the current forensic signals to the plotting dictionary
+    # current anomaly scores stored into a dictionary (key and value)
     models_to_plot = {
         'SSAE Recon Error': df['ae_score'],
         'One-Class SVM': df['svm_score'],
@@ -256,7 +262,7 @@ def plot_ensemble_pr_facets(df, labels):
         ap = average_precision_score(labels, scores)
         
         ax = axes[i]
-        # ENFORCED: scfg.C_BLUE for the performance curve
+        
         ax.plot(recall, precision, color=scfg.C_BLUE, lw=3, label=f'AP Score: {ap:.2f}')
         
         # Baseline line in red shows 'random guessing'
@@ -272,15 +278,12 @@ def plot_ensemble_pr_facets(df, labels):
         ax.grid(True, alpha=0.3)
         ax.legend(loc='lower left', frameon=True)
 
-    # Main title for the figure
-    plt.suptitle('Comparative Forensic Detection Performance (PR)', 
+    plt.suptitle('PR Performance', 
                  fontsize=16, fontweight='bold', y=0.98)
     
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-    plt.savefig('fig8_pr_facets.png', dpi=300)
+    plt.savefig('pr_facets.png', dpi=300)
     plt.close()
-    print("[SUCCESS] Figure 8 PR Facets saved.")
-
  # 5. Latent transverse plot (a what if approach) - this will show how the t-sne shows what happens when an athlete dopes and their biomarker valeus increase
 
 #def plot_latent_traversal(full_x, df, encoder, athlete_idx=0):
@@ -410,26 +413,24 @@ def plot_real_athlete_path(full_x, df, encoder, target_id):
 
 def plot_reconstruction_heatmap(full_x, reconstructed_x, feature_names, num_samples=15):
     """
-    FIGURE 5: FEATURE-LEVEL RECONSTRUCTION ERROR
-    Identifies the forensic 'Root Cause' by showing which biomarkers 
-    the SSAE failed to reconstruct (Red = High Anomaly).
+    FEATURE-LEVEL RECONSTRUCTION ERROR
+    Identifies the 'Root Cause' by showing which biomarkers the SSAE failed to reconstruct (Red = High Anomaly).
     """
-    print("[INFO] Plotting Figure 5: Forensic Root Cause Heatmap...")
+    print("[Checkpoint] Heatmap of reconstruction error")
     
-    # Calculate absolute error per feature (Input vs. SSAE Output)
-    # The higher the error, the more the sample deviates from the 'Normal' learned manifold
+    # calcualte error per feature (Input vs. SSAE Output)
+        # higher error = more sample deviation from 'Normal' baseline
     errors = np.abs(full_x - reconstructed_x)
-    
-    # Identify the top N most anomalous samples based on average error across all features
-    # This ensures we are looking at the most significant forensic cases
+
+    # ID top N anomalous samples based on average error across all features
+    # ensures cases which are most difficult to reconstruct are used
     top_idx = np.argsort(np.mean(errors, axis=1))[-num_samples:]
     
-    # Create a DataFrame for Seaborn mapping
+    # dataframe used by seaborn plotting package
     df_err = pd.DataFrame(errors[top_idx], columns=feature_names)
 
     plt.figure(figsize=(14, 10))
-    
-    # ENFORCED: YlOrRd palette where Red signifies the forensic 'Hot' zone
+
     sns.heatmap(
         df_err, 
         annot=True, 
@@ -439,15 +440,14 @@ def plot_reconstruction_heatmap(full_x, reconstructed_x, feature_names, num_samp
         cbar_kws={'label': 'Absolute Reconstruction Error'}
     )
     
-    plt.title(" Root Cause Analysis (Biomarker Deviations)", 
+    plt.title(" Feature level Reconstruction Error (SSAE)", 
               fontsize=14, fontweight='bold')
     plt.xlabel("Biological Markers (Ensemble Input Features)", fontweight='bold')
     plt.ylabel("Anomalous Athlete Sample Index (Top Ranked)", fontweight='bold')
     
     plt.tight_layout()
-    plt.savefig('fig5_forensic_heatmap.png', dpi=300)
+    plt.savefig('forensic_heatmap.png', dpi=300)
     plt.close()
-    print("[SUCCESS] Figure 5 Heatmap saved.")
 
 def plot_reconstructed_transformation_proof(df, feature_col):
     """
@@ -461,18 +461,18 @@ def plot_reconstructed_transformation_proof(df, feature_col):
     fig.suptitle(f" Process of Normalising and Centralising Data {feat_label}", 
                  fontsize=16, fontweight='bold')
 
-    # 1. RECONSTRUCTED RAW (Simulation of the pre-logged state)
+    # 1. re-establish raw values (pre-log values to show how important preprocessing is)
     raw_reconstructed = np.exp(df[feature_col])
     sns.histplot(raw_reconstructed, kde=True, color="gray", ax=axes[0])
-    axes[0].set_title(f"1. Reconstructed Raw {feat_label}")
+    axes[0].set_title(f" 1. Reconstructed Raw {feat_label}")
     axes[0].set_xlabel("Estimated ng/mL")
 
-    # 2. LOG-AVERAGED (The data as it exists in your merged_df)
+    # 2. log avgs (from merged_df)
     sns.histplot(df[feature_col], kde=True, color="firebrick", ax=axes[1])
     axes[1].set_title(f"2. Log-Averaged {feat_label} (Current)")
     axes[1].set_xlabel("Natural Log Units")
 
-    # 3. FINAL MANIFOLD INPUT (Standardized for the SSAE)
+    # 3. preproc. def output for the SSAE
     z_scored = (df[feature_col] - df[feature_col].mean()) / df[feature_col].std()
     sns.histplot(z_scored, kde=True, color="mediumseagreen", ax=axes[2])
     axes[2].set_title("3. Final Z-Score (Standardised & Centralised)")
@@ -480,16 +480,15 @@ def plot_reconstructed_transformation_proof(df, feature_col):
 
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.savefig(f"proof_{feature_col}.png", dpi=300)
-    plt.show()
+    plt.close()
 
-# --- 5. MASTER EXECUTION ---
+# 5. MASTER EXECUTION 
 def generate_all_plots(df, latent_full, full_x, reconstructed_x, labels, feature_names, encoder, history, scores):    
     """
-    FIGURES 1-9: THE COMPLETE FORENSIC DOSSIER
-    Updated for 6D Latent Space and Log-Scaled forensic separation.
+    Definition to call and run all other defintions
     """
     print("\n" + "="*50)
-    print("STARTING FULL DISSERTATION PLOTTING SUITE")
+    print("STARTING FULL DISSERTATION PLOTTING")
     print("="*50)
 
     # Fig 1: Baseline sample counts
@@ -514,5 +513,5 @@ def generate_all_plots(df, latent_full, full_x, reconstructed_x, labels, feature
     top_suspect = df[df['source'] == 'ATHLETE_REF'].nlargest(1, 'total_score')['id'].iloc[0]
     plot_real_athlete_path(full_x, df, encoder, target_id=top_suspect)
     print("\n" + "="*50)
-    print(f"[SUCCESS] Suite Exported with 6D-to-3D Projection.")
+    print(f"[Final Visualisation Checkpoint] Vis. complete.")
     print("="*50 + "\n")
