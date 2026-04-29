@@ -3,6 +3,7 @@ import numpy as np
 import tensorflow as tf
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
+import shap
 
 # --- 1. CONFIG & MODEL IMPORTS ---
 from pybofa.prep.config import (
@@ -99,7 +100,7 @@ if __name__ == "__main__":
     print("--- Step 2: Running Original Models ---")
     
     # Model A: SSAE (saving reconstructed_x MSE for Heatmap)
-    ae_raw, latent_full, _, recon_x, encoder, history = ssae_mod.run_ssae(full_x, full_x, labels)
+    ae_raw, latent_full, model, recon_x, encoder, history, shap_values, x_test, background_array= ssae_mod.run_ssae(full_x, full_x, labels)
     
     # Model B: Weighted one-class SVM (Genomic hyperplane separation in the 3D Manifold)
     svm_raw = svm_mod.run_svm(latent_full, labels, latent_full)
@@ -142,7 +143,11 @@ if __name__ == "__main__":
         feature_names=feature_names,
         encoder=encoder,
         history=history, 
-        scores=ae_raw    
+        scores=ae_raw,
+        shap_values = shap_values,
+        x_test = x_test,
+        background_array = background_array, 
+        model = model    
     )
     # 5. SAVE RESULTS
     df.to_csv(dcfg.final_results, index=False)

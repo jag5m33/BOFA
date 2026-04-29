@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import shap
 import os
 import tensorflow as tf
 from tensorflow.keras import models, layers
@@ -426,6 +427,7 @@ def plot_reconstruction_heatmap(full_x, reconstructed_x, feature_names, num_samp
     # ensures cases which are most difficult to reconstruct are used
     top_idx = np.argsort(np.mean(errors, axis=1))[-num_samples:]
     
+
     # dataframe used by seaborn plotting package
     df_err = pd.DataFrame(errors[top_idx], columns=feature_names)
 
@@ -482,8 +484,43 @@ def plot_reconstructed_transformation_proof(df, feature_col):
     plt.savefig(f"proof_{feature_col}.png", dpi=300)
     plt.close()
 
+def shap_viz(shap_values, x_test, background_array, model):
+    # 1. Grab the first output's scores
+    impact_scores = np.array(shap_values[0]) 
+    input_data = np.array(x_test[:10])
+
+    # 2. Force the rows to match
+    # If impact_scores has 17 rows but data has 10, we cut impact_scores down to 10.
+    if impact_scores.shape[0] != input_data.shape[0]:
+        print(f"aligning shapes: Cutting {impact_scores.shape[0]} SHAP rows to {input_data.shape[0]}")
+        impact_scores = impact_scores[:input_data.shape[0], :]
+
+    # Double check final alignment
+    print(f"FINAL SHAP shape: {impact_scores.shape}") # Should now be (10, 17)
+    print(f"FINAL Data shape: {input_data.shape}")     # Should now be (10, 17)
+
+    # 3. THE SUMMARY PLOT
+    print("Generating Summary Plot...")
+    shap.summary_plot(
+        impact_scores, 
+        input_data, 
+        plot_type="dot"
+    )
+
+    print("Generating Waterfall Plot...")
+    # Get mean reconstruction for Feature 0
+    avg_reconstruction = model.predict(background_array, verbose=0).mean(axis=0)
+    
+    exp = shap.Explanation(
+        values=impact_scores[0, :], 
+        base_values=avg_reconstruction[0],
+        data=input_data[0, :],
+        feature_names=[f"Feat_{i}" for i in range(17)]
+    )
+    shap.waterfall_plot(exp, max_display=10)
+
 # 5. MASTER EXECUTION 
-def generate_all_plots(df, latent_full, full_x, reconstructed_x, labels, feature_names, encoder, history, scores):    
+def generate_all_plots(df, latent_full, full_x, reconstructed_x, labels, feature_names, encoder, history, scores, shap_values, x_test, background_array, model):    
     """
     Definition to call and run all other defintions
     """
@@ -510,8 +547,10 @@ def generate_all_plots(df, latent_full, full_x, reconstructed_x, labels, feature
     plot_forensic_profiles(df, n=3)    
     plot_ensemble_pr_facets(df, labels)
     # Track the top suspect's journey across the 6D->3D manifold
-    top_suspect = df[df['source'] == 'ATHLETE_REF'].nlargest(1, 'total_score')['id'].iloc[0]
-    plot_real_athlete_path(full_x, df, encoder, target_id=top_suspect)
+    #top_suspect = df[df['source'] == 'ATHLETE_REF'].nlargest(1, 'total_score')['id'].iloc[0]
+    #plot_real_athlete_path(full_x, df, encoder, target_id=top_suspect)
+    #plot shapely model activity:
+    shap_viz(shap_values, x_test[:10], background_array, model)
     print("\n" + "="*50)
     print(f"[Final Visualisation Checkpoint] Vis. complete.")
     print("="*50 + "\n")
