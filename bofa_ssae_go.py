@@ -129,7 +129,7 @@ if __name__ == "__main__":
 
     # remove any additional NANs that have been ignores or missed in the current list generated
     score_cols = ['ae_score', 'svm_score', 'ls_score', 'total_score', 'total_viz']
-        # np.inf, or -np.inf remove infinity values and replaces with 0 in any of the score cols in the list above.
+        # np.inf, % -np.inf remove infinity values and replaces with 0 in any of the score cols in the list above.
     df[score_cols] = df[score_cols].fillna(0).replace([np.inf, -np.inf], 0)
 
     # 4. run visualisation script 
