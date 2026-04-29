@@ -34,7 +34,7 @@ class ensemble_params:
     w_ls  = 0.20 
     
     svm_C = 500.0     
-    svm_gamma = 0.01  
+    svm_gamma = 0.05  
     svm_weight = 50.0 
        
     ls_alpha = 0.8

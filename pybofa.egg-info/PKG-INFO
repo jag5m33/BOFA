@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: pybofa
-Version: 0.0.1
+Version: 0.0.2
 Summary: multi-model consensus tool
 Author-email: jks <jag5m33@gmail.com>
 Requires-Python: >=3.13
@@ -16,6 +16,8 @@ Requires-Dist: seaborn>=0.13.2
 Requires-Dist: tf-keras-vis>=0.8.7
 Requires-Dist: plotly>=6.6.0
 Requires-Dist: umap-learn>=0.5.11
+Requires-Dist: shap>=0.51.0
+Requires-Dist: shapely>=2.1.2
 
 ## BOFA
 

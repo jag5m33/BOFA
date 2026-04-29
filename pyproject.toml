@@ -1,6 +1,6 @@
 [project]
 name = "pybofa"
-version = "0.0.2"
+version = "0.0.3"
 description = "multi-model consensus tool"
 readme = "README.md"
 authors = [{ name = "jks", email = "jag5m33@gmail.com" }]
@@ -18,8 +18,7 @@ dependencies = [
     "tf-keras-vis>=0.8.7",
     "plotly>=6.6.0",
     "umap-learn>=0.5.11",
-    "shap>=0.51.0",
-    "shapely>=2.1.2",
+    "shap>=0.51.0"
 ]
 
 [dependency-groups]

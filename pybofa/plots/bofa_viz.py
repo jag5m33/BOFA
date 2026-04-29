@@ -108,11 +108,11 @@ def plot_3d_manifold(latent_data, df, labels, scores):
 
     # AXIS parameters - for each parameter establish visualisation factors (male, female, dopers)
     ax.scatter(coords[m_mask, 0], coords[m_mask, 1], coords[m_mask, 2],
-               c='#1f77b4', s=25, alpha=0.1, label='Male Baseline', edgecolors='none')
+               c='#1f77b4', s=25, alpha=0.25, label='Male Baseline', edgecolors='none')
     ax.scatter(coords[f_mask, 0], coords[f_mask, 1], coords[f_mask, 2],
-               c='#e377c2', s=25, alpha=0.1, label='Female Baseline', edgecolors='none')
+               c='#e377c2', s=25, alpha=0.25, label='Female Baseline', edgecolors='none')
     ax.scatter(coords[d_mask_final, 0], coords[d_mask_final, 1], coords[d_mask_final, 2],
-               c='black', s=140, alpha=0.7, edgecolors='white', linewidths=1.5, label='Forensic Flags')
+               c='black', s=140, alpha=0.25, edgecolors='white', linewidths=1.5, label='Forensic Flags')
 
     # formating visualisations and labelling
     ax.set_title("3D SSAE Latent Space (Bottleneck layer)", pad=20, fontweight='bold')

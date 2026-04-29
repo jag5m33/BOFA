@@ -100,7 +100,7 @@ if __name__ == "__main__":
     print("--- Step 2: Running Original Models ---")
     
     # Model A: SSAE (saving reconstructed_x MSE for Heatmap)
-    ae_raw, latent_full, model, recon_x, encoder, history, shap_values, x_test, background_array= ssae_mod.run_ssae(full_x, full_x, labels)
+    ae_raw, latent_full, model, recon_x, encoder, history, shap_values, x_test  , background_array= ssae_mod.run_ssae(full_x, full_x, labels)
     
     # Model B: Weighted one-class SVM (Genomic hyperplane separation in the 3D Manifold)
     svm_raw = svm_mod.run_svm(latent_full, labels, latent_full)

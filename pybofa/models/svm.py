@@ -13,7 +13,7 @@ def run_svm(train_latent, train_labels, test_latent):
     clf = svm.SVC(
         kernel='rbf', 
         C=ecfg.svm_C,             # Regularization parameter from config
-        gamma=ecfg.svm_gamma,     # Boundary smoothness from config
+        gamma=ecfg.svm_gamma,    # Boundary smoothness from config
         probability=True, 
         class_weight={0: 1, 1: ecfg.svm_weight} # Penalty ratio from config
     )
