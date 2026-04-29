@@ -69,13 +69,9 @@ MODELS:
     - Label Spreading (LS) - explained previously
 
 
-<<<<<<< HEAD
 When training the models, it is importnat to note that they are NOT trained as a large group, they are evaluated individually, and then the outputs and evaluated together. They use 2 distinct data sources which define the biological model feautre spaces and prediction generated.
-=======
-    
 
 When training the models, it is importnat to note that they are NOT trained as a large group, they are evaluated individually, and then the outputs and evaluated together. They use 2 distinct data sources which define the biological model feature spaces and prediction generated.
->>>>>>> 77e9ce9193f518e9c545db22d22bc55777eb9475
     
     - The ATHLETE_REF - this is the unlabelled 'proposed' population normal baseline; with approx. 6000+ samples representing the 'norm'. Biological variation of elite athltes are found with the 'volume of normality' review.
 
