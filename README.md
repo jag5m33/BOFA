@@ -58,7 +58,7 @@ PREPERATION: Initial Data prep. was also conductd in python, specifically, robus
     - Imputer based on columnar median values: this is essential, as mean and std could be affected by extreme values which medians are often blind to. Therefore, robust scaling on median values and then imputing NA's based on this is important
 
 
-THE MODEL ARCHITECTURE: Traditional unsupservised models tend to learn the 'normal' baseline however, BOFA uses a semi-seripvised approach whereby the models express both the unlabelled and labelled (control) samples during trainnig. This way the models are 'guided' to specifically recongise sampels with anomalous behaviour.
+THE MODEL ARCHITECTURE: Traditional unsupervised models tend to learn the 'normal' baseline however, BOFA uses a semi-supervised approach whereby the models express both the unlabelled and labelled (control) samples during trainnig. This way the models are 'guided' to specifically recongise samples with anomalous behaviour.
 
 MODELS:
 
@@ -69,7 +69,13 @@ MODELS:
     - Label Spreading (LS) - explained previously
 
 
+<<<<<<< HEAD
 When training the models, it is importnat to note that they are NOT trained as a large group, they are evaluated individually, and then the outputs and evaluated together. They use 2 distinct data sources which define the biological model feautre spaces and prediction generated.
+=======
+    
+
+When training the models, it is importnat to note that they are NOT trained as a large group, they are evaluated individually, and then the outputs and evaluated together. They use 2 distinct data sources which define the biological model feature spaces and prediction generated.
+>>>>>>> 77e9ce9193f518e9c545db22d22bc55777eb9475
     
     - The ATHLETE_REF - this is the unlabelled 'proposed' population normal baseline; with approx. 6000+ samples representing the 'norm'. Biological variation of elite athltes are found with the 'volume of normality' review.
 
