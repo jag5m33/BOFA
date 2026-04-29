@@ -67,6 +67,10 @@ def load_and_preprocess():
 # feature_list is the list of features used in the model, which can be useful for later reference in visualizations and analysis. also including vol_cols 
 
 def robust_standardize(scores, labels):
+    """
+    Robust standardisation
+    This is a specific function for scoring system standardisation
+    """
     # Determine 'Normal' bounds using only Reference athletes
         # for all 0 labels (reference athletes), calculate the median and IQR to define a robust scale
     baseline = scores[labels == 0]
@@ -149,6 +153,6 @@ if __name__ == "__main__":
         background_array = background_array, 
         model = model    
     )
-    # 5. SAVE RESULTS
+    # 5. save results
     df.to_csv(dcfg.final_results, index=False)
     print(f"\n[SUCCESS] Pipeline complete. Results saved: {dcfg.final_results}")

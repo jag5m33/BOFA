@@ -1,6 +1,7 @@
 ## BOFA
 
 BOFA: Bayesian Optimisation & Feature Analysis
+
 1. PROJECT OVERVIEW
 BOFA is a machine learning framework developed to detect anomalous athletes exhibiting Growth Hromone (GH)-like biomarker profiles. This project applies a consensus-based anomaly detection approach, combining multiple unserupvised models to identify athletes whose physiological signitures deviate from a learning baseline of normal biological vairation. 
 The primary objective is to:
@@ -65,10 +66,8 @@ MODELS:
 
     - Support Vector Machines (One class SVM):  Kernal boundaries. This is a semi-superivised guided classification mode which uses support vector classification with an RBF (kernal) to define high dimensional boundaries specifically when seperating clean and doping samples 
 
-    - Label Spreading (LS) - explained previously.
+    - Label Spreading (LS) - explained previously
 
-
-    
 
 When training the models, it is importnat to note that they are NOT trained as a large group, they are evaluated individually, and then the outputs and evaluated together. They use 2 distinct data sources which define the biological model feautre spaces and prediction generated.
     
@@ -78,7 +77,7 @@ When training the models, it is importnat to note that they are NOT trained as a
 
 TRAINING STRATEGY: each model in BOFA learns the data differently 
 
-    - Autoencoder (ae): trained on ATHLETE_REF only.
+    - semi-supervised autoencoder - only trained on ATHLETE_REF
 
     - Support Vector Machine/Classifier (SVM): trained on both ATHLETE_REF, GH_CONTROL
 
