@@ -39,12 +39,12 @@ def run_label_spreading(latent_space, labels):
     if 1 not in ls_labels:
         print("No positive labels found for Label Spreading. return zero.")
         return np.zeros(len(ls_labels))
-    
     scaler = StandardScaler()
     scaled_latent = scaler.fit_transform(latent_space)
     # 2. build model using rbf kernel to look at global 3D t-sne distribution
         # RBF kernel = 'heat map synonymous'; it assigns suspicion based on 3D distance.
     # Uses ls_gamma (0.3) and ls_alpha (0.1) from config.py
+    
     model = LabelSpreading(
         kernel='knn', 
         alpha=ecfg.ls_alpha,

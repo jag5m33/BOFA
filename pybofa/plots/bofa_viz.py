@@ -133,10 +133,9 @@ def plot_3d_manifold(latent_data, df, labels, scores):
 
 def plot_kde_distributions(df):
     """
-    KDE plot - kernal density plots: visualise the porbability density of data in distribution format 
-    Similar to histograms, but show the both GH_CONTROl and ATHELTE_REF distribution for each model
+    KDE plot - visualises the probability density of data.
+    Improved version with uniform scaling and outlier clipping for forensics.
     """
-    # Use the visualization columns from main script
     viz_cols = ['ae_viz', 'svm_viz', 'ls_viz', 'total_viz']
     titles = [
         'Model A: SSAE Reconstruction', 
@@ -144,39 +143,51 @@ def plot_kde_distributions(df):
         'Model C: Label Spreading', 
         'Consensus Ensemble'
     ]
-    # primerily focus on consensus ensemble!
 
-    # figure size = 1x4 panel for side-by-side comparison
     fig, axes = plt.subplots(1, 4, figsize=(22, 6), facecolor='white')
     palette = {'ATHLETE_REF': scfg.C_BLUE, 'GH_CONTROL': scfg.C_RED}
     
     for i, col in enumerate(viz_cols):
-        # KDE plotting parameters
+        # 1. CLIP OUTLIERS: Prevents the "infinite tail" seen in Model B/C
+        # We clip at the 1st and 99th percentile to keep the focus on the main distribution
+        lower, upper = df[col].quantile([0.005, 0.995])
+        plot_data = df[(df[col] >= lower) & (df[col] <= upper)]
+
         sns.kdeplot(
-            data=df, x=col, hue='source',
+            data=plot_data, x=col, hue='source',
             fill=True, 
             ax=axes[i],
-            bw_adjust=0.6,    # Smooths out the distribution for easier visualisation interpretation
-            common_norm=False, # ensures dopers are visible
-            alpha=0.4,
-            palette=palette
+            bw_adjust=0.75,    # Slightly higher than 0.6 to reduce 'spikiness'
+            common_norm=False, 
+            alpha=0.5,         # Increased alpha for better color depth
+            palette=palette,
+            linewidth=1.5      # Adds a crisp edge to the distributions
         )
         
-        # visualisation formatting
-        axes[i].set_title(titles[i], fontweight='bold', fontsize=12)
-        axes[i].set_xlabel("Signal Length (Normalised Scale)")
-        axes[i].set_ylabel("Density")
+        # 2. UNIFORM FORMATTING
+        axes[i].set_title(titles[i], fontweight='bold', fontsize=13, pad=15)
+        axes[i].set_xlabel("Signal Strength (Std. Scale)", fontsize=10)
+        axes[i].set_ylabel("Density", fontsize=10)
         
-        # remove legend for all plots other than last to ensure it is not unnecessarily repeated
-        if i != 3:
+        # Remove individual legends to create a single clean one later
+        if axes[i].get_legend():
             axes[i].get_legend().remove()
-    
-    plt.suptitle("Signal Separation across Anomaly Detection Models and Consensus", 
-                 fontsize=16, fontweight='bold', y=1.02)
+        
+        # Clean up spines for a modern look
+        sns.despine(ax=axes[i])
+
+    # 3. GLOBAL LEGEND: Place it once at the top right or bottom
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, ['Reference Athlete', 'GH Control'], 
+               loc='upper right', bbox_to_anchor=(0.98, 0.95), 
+               title="Cohort", frameon=True)
+
+    plt.suptitle("Signal Separation across Anomaly Models", 
+                 fontsize=18, fontweight='bold', y=1.05)
     
     plt.tight_layout()
-    plt.savefig('multi_model_kde.png', dpi=300, bbox_inches='tight')
-    plt.close()
+    plt.savefig('multi_model_kde_v2.png', dpi=300, bbox_inches='tight')
+    plt.show()
     
 def plot_forensic_profiles(df, n=3):
     """

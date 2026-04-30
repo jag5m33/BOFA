@@ -153,6 +153,7 @@ if __name__ == "__main__":
         background_array = background_array, 
         model = model    
     )
+    
     # 5. save results
     df.to_csv(dcfg.final_results, index=False)
     print(f"\n[SUCCESS] Pipeline complete. Results saved: {dcfg.final_results}")

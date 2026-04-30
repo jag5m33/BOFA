@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: pybofa
-Version: 0.0.2
+Version: 0.0.5
 Summary: multi-model consensus tool
 Author-email: jks <jag5m33@gmail.com>
 Requires-Python: >=3.13
@@ -17,11 +17,11 @@ Requires-Dist: tf-keras-vis>=0.8.7
 Requires-Dist: plotly>=6.6.0
 Requires-Dist: umap-learn>=0.5.11
 Requires-Dist: shap>=0.51.0
-Requires-Dist: shapely>=2.1.2
 
 ## BOFA
 
 BOFA: Bayesian Optimisation & Feature Analysis
+
 1. PROJECT OVERVIEW
 BOFA is a machine learning framework developed to detect anomalous athletes exhibiting Growth Hromone (GH)-like biomarker profiles. This project applies a consensus-based anomaly detection approach, combining multiple unserupvised models to identify athletes whose physiological signitures deviate from a learning baseline of normal biological vairation. 
 The primary objective is to:
@@ -78,7 +78,7 @@ PREPERATION: Initial Data prep. was also conductd in python, specifically, robus
     - Imputer based on columnar median values: this is essential, as mean and std could be affected by extreme values which medians are often blind to. Therefore, robust scaling on median values and then imputing NA's based on this is important
 
 
-THE MODEL ARCHITECTURE: Traditional unsupservised models tend to learn the 'normal' baseline however, BOFA uses a semi-seripvised approach whereby the models express both the unlabelled and labelled (control) samples during trainnig. This way the models are 'guided' to specifically recongise sampels with anomalous behaviour.
+THE MODEL ARCHITECTURE: Traditional unsupervised models tend to learn the 'normal' baseline however, BOFA uses a semi-supervised approach whereby the models express both the unlabelled and labelled (control) samples during trainnig. This way the models are 'guided' to specifically recongise samples with anomalous behaviour.
 
 MODELS:
 
@@ -86,12 +86,12 @@ MODELS:
 
     - Support Vector Machines (One class SVM):  Kernal boundaries. This is a semi-superivised guided classification mode which uses support vector classification with an RBF (kernal) to define high dimensional boundaries specifically when seperating clean and doping samples 
 
-    - Label Spreading (LS) - explained previously.
+    - Label Spreading (LS) - explained previously
 
-
-    
 
 When training the models, it is importnat to note that they are NOT trained as a large group, they are evaluated individually, and then the outputs and evaluated together. They use 2 distinct data sources which define the biological model feautre spaces and prediction generated.
+
+When training the models, it is importnat to note that they are NOT trained as a large group, they are evaluated individually, and then the outputs and evaluated together. They use 2 distinct data sources which define the biological model feature spaces and prediction generated.
     
     - The ATHLETE_REF - this is the unlabelled 'proposed' population normal baseline; with approx. 6000+ samples representing the 'norm'. Biological variation of elite athltes are found with the 'volume of normality' review.
 
@@ -99,7 +99,7 @@ When training the models, it is importnat to note that they are NOT trained as a
 
 TRAINING STRATEGY: each model in BOFA learns the data differently 
 
-    - Autoencoder (ae): trained on ATHLETE_REF only.
+    - semi-supervised autoencoder - only trained on ATHLETE_REF
 
     - Support Vector Machine/Classifier (SVM): trained on both ATHLETE_REF, GH_CONTROL
 

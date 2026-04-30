@@ -1,4 +1,8 @@
 def abp(df):
+    """
+    Model 0: Athlete biological passport.
+    outlier detection based on longitudanal approaches
+    """
     markers = ['avg_pnp', 'avg_igf', 'igf_pnp_ratio']
     
     # 1. count and identify athlete IDs that have 2 or more samples

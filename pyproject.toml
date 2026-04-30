@@ -1,6 +1,6 @@
 [project]
 name = "pybofa"
-version = "0.0.3"
+version = "0.0.5"
 description = "multi-model consensus tool"
 readme = "README.md"
 authors = [{ name = "jks", email = "jag5m33@gmail.com" }]

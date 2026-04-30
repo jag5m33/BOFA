@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import shap
 import os
 import tensorflow as tf
 from tensorflow.keras import models, layers
@@ -107,11 +108,11 @@ def plot_3d_manifold(latent_data, df, labels, scores):
 
     # AXIS parameters - for each parameter establish visualisation factors (male, female, dopers)
     ax.scatter(coords[m_mask, 0], coords[m_mask, 1], coords[m_mask, 2],
-               c='#1f77b4', s=25, alpha=0.1, label='Male Baseline', edgecolors='none')
+               c='#1f77b4', s=25, alpha=0.25, label='Male Baseline', edgecolors='none')
     ax.scatter(coords[f_mask, 0], coords[f_mask, 1], coords[f_mask, 2],
-               c='#e377c2', s=25, alpha=0.1, label='Female Baseline', edgecolors='none')
+               c='#e377c2', s=25, alpha=0.25, label='Female Baseline', edgecolors='none')
     ax.scatter(coords[d_mask_final, 0], coords[d_mask_final, 1], coords[d_mask_final, 2],
-               c='black', s=140, alpha=0.7, edgecolors='white', linewidths=1.5, label='Forensic Flags')
+               c='black', s=140, alpha=0.25, edgecolors='white', linewidths=1.5, label='Forensic Flags')
 
     # formating visualisations and labelling
     ax.set_title("3D SSAE Latent Space (Bottleneck layer)", pad=20, fontweight='bold')
@@ -132,10 +133,9 @@ def plot_3d_manifold(latent_data, df, labels, scores):
 
 def plot_kde_distributions(df):
     """
-    KDE plot - kernal density plots: visualise the porbability density of data in distribution format 
-    Similar to histograms, but show the both GH_CONTROl and ATHELTE_REF distribution for each model
+    KDE plot - visualises the probability density of data.
+    Improved version with uniform scaling and outlier clipping for forensics.
     """
-    # Use the visualization columns from main script
     viz_cols = ['ae_viz', 'svm_viz', 'ls_viz', 'total_viz']
     titles = [
         'Model A: SSAE Reconstruction', 
@@ -143,39 +143,51 @@ def plot_kde_distributions(df):
         'Model C: Label Spreading', 
         'Consensus Ensemble'
     ]
-    # primerily focus on consensus ensemble!
 
-    # figure size = 1x4 panel for side-by-side comparison
     fig, axes = plt.subplots(1, 4, figsize=(22, 6), facecolor='white')
     palette = {'ATHLETE_REF': scfg.C_BLUE, 'GH_CONTROL': scfg.C_RED}
     
     for i, col in enumerate(viz_cols):
-        # KDE plotting parameters
+        # 1. CLIP OUTLIERS: Prevents the "infinite tail" seen in Model B/C
+        # We clip at the 1st and 99th percentile to keep the focus on the main distribution
+        lower, upper = df[col].quantile([0.005, 0.995])
+        plot_data = df[(df[col] >= lower) & (df[col] <= upper)]
+
         sns.kdeplot(
-            data=df, x=col, hue='source',
+            data=plot_data, x=col, hue='source',
             fill=True, 
             ax=axes[i],
-            bw_adjust=0.6,    # Smooths out the distribution for easier visualisation interpretation
-            common_norm=False, # ensures dopers are visible
-            alpha=0.4,
-            palette=palette
+            bw_adjust=0.75,    # Slightly higher than 0.6 to reduce 'spikiness'
+            common_norm=False, 
+            alpha=0.5,         # Increased alpha for better color depth
+            palette=palette,
+            linewidth=1.5      # Adds a crisp edge to the distributions
         )
         
-        # visualisation formatting
-        axes[i].set_title(titles[i], fontweight='bold', fontsize=12)
-        axes[i].set_xlabel("Signal Length (Normalised Scale)")
-        axes[i].set_ylabel("Density")
+        # 2. UNIFORM FORMATTING
+        axes[i].set_title(titles[i], fontweight='bold', fontsize=13, pad=15)
+        axes[i].set_xlabel("Signal Strength (Std. Scale)", fontsize=10)
+        axes[i].set_ylabel("Density", fontsize=10)
         
-        # remove legend for all plots other than last to ensure it is not unnecessarily repeated
-        if i != 3:
+        # Remove individual legends to create a single clean one later
+        if axes[i].get_legend():
             axes[i].get_legend().remove()
-    
-    plt.suptitle("Signal Separation across Anomaly Detection Models and Consensus", 
-                 fontsize=16, fontweight='bold', y=1.02)
+        
+        # Clean up spines for a modern look
+        sns.despine(ax=axes[i])
+
+    # 3. GLOBAL LEGEND: Place it once at the top right or bottom
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, ['Reference Athlete', 'GH Control'], 
+               loc='upper right', bbox_to_anchor=(0.98, 0.95), 
+               title="Cohort", frameon=True)
+
+    plt.suptitle("Signal Separation across Anomaly Models", 
+                 fontsize=18, fontweight='bold', y=1.05)
     
     plt.tight_layout()
-    plt.savefig('multi_model_kde.png', dpi=300, bbox_inches='tight')
-    plt.close()
+    plt.savefig('multi_model_kde_v2.png', dpi=300, bbox_inches='tight')
+    plt.show()
     
 def plot_forensic_profiles(df, n=3):
     """
@@ -426,6 +438,7 @@ def plot_reconstruction_heatmap(full_x, reconstructed_x, feature_names, num_samp
     # ensures cases which are most difficult to reconstruct are used
     top_idx = np.argsort(np.mean(errors, axis=1))[-num_samples:]
     
+
     # dataframe used by seaborn plotting package
     df_err = pd.DataFrame(errors[top_idx], columns=feature_names)
 
@@ -482,8 +495,43 @@ def plot_reconstructed_transformation_proof(df, feature_col):
     plt.savefig(f"proof_{feature_col}.png", dpi=300)
     plt.close()
 
+def shap_viz(shap_values, x_test, background_array, model):
+    # 1. Grab the first output's scores
+    impact_scores = np.array(shap_values[0]) 
+    input_data = np.array(x_test[:10])
+
+    # 2. Force the rows to match
+    # If impact_scores has 17 rows but data has 10, we cut impact_scores down to 10.
+    if impact_scores.shape[0] != input_data.shape[0]:
+        print(f"aligning shapes: Cutting {impact_scores.shape[0]} SHAP rows to {input_data.shape[0]}")
+        impact_scores = impact_scores[:input_data.shape[0], :]
+
+    # Double check final alignment
+    print(f"FINAL SHAP shape: {impact_scores.shape}") # Should now be (10, 17)
+    print(f"FINAL Data shape: {input_data.shape}")     # Should now be (10, 17)
+
+    # 3. THE SUMMARY PLOT
+    print("Generating Summary Plot...")
+    shap.summary_plot(
+        impact_scores, 
+        input_data, 
+        plot_type="dot"
+    )
+
+    print("Generating Waterfall Plot...")
+    # Get mean reconstruction for Feature 0
+    avg_reconstruction = model.predict(background_array, verbose=0).mean(axis=0)
+    
+    exp = shap.Explanation(
+        values=impact_scores[0, :], 
+        base_values=avg_reconstruction[0],
+        data=input_data[0, :],
+        feature_names=[f"Feat_{i}" for i in range(17)]
+    )
+    shap.waterfall_plot(exp, max_display=10)
+
 # 5. MASTER EXECUTION 
-def generate_all_plots(df, latent_full, full_x, reconstructed_x, labels, feature_names, encoder, history, scores):    
+def generate_all_plots(df, latent_full, full_x, reconstructed_x, labels, feature_names, encoder, history, scores, shap_values, x_test, background_array, model):    
     """
     Definition to call and run all other defintions
     """
@@ -510,8 +558,10 @@ def generate_all_plots(df, latent_full, full_x, reconstructed_x, labels, feature
     plot_forensic_profiles(df, n=3)    
     plot_ensemble_pr_facets(df, labels)
     # Track the top suspect's journey across the 6D->3D manifold
-    top_suspect = df[df['source'] == 'ATHLETE_REF'].nlargest(1, 'total_score')['id'].iloc[0]
-    plot_real_athlete_path(full_x, df, encoder, target_id=top_suspect)
+    #top_suspect = df[df['source'] == 'ATHLETE_REF'].nlargest(1, 'total_score')['id'].iloc[0]
+    #plot_real_athlete_path(full_x, df, encoder, target_id=top_suspect)
+    #plot shapely model activity:
+    shap_viz(shap_values, x_test[:10], background_array, model)
     print("\n" + "="*50)
     print(f"[Final Visualisation Checkpoint] Vis. complete.")
     print("="*50 + "\n")
