@@ -26,7 +26,7 @@ def plot_abp_sample_distribution(df):
     Athlete Biological Passport sample counts
     Uses shades scfg.* from config, established for consistency
     """
-    print(" [Checkpoint] Plotting ABP Sample Distribution")
+    print("[Checkpoint] Plotting ABP Sample Distribution")
     # athlete IDs grouped to count specific longitudinal samples counts
     sample_counts = df.groupby('id').size().value_counts().sort_index()
     
@@ -298,60 +298,6 @@ def plot_ensemble_pr_facets(df, labels):
     plt.close()
  # 5. Latent transverse plot (a what if approach) - this will show how the t-sne shows what happens when an athlete dopes and their biomarker valeus increase
 
-#def plot_latent_traversal(full_x, df, encoder, athlete_idx=0):
-#     """
-#     Simulates a 'Doping Journey' on the 3D manifold.
-#     Shows a clean athlete moving toward the anomaly zone as markers spike.
-#     """
-#     # 1. Grab a clean athlete and make 20 copies of them
-#     steps = 20
-#     clean_row = full_x[athlete_idx].reshape(1, -1)
-#     traversal_path = np.tile(clean_row, (steps, 1))
-    
-#     # 2. Spike the biomarkers (e.g., column 0 is IGF, column 2 is Ratio)
-#     # We gradually increase the values to simulate a doping cycle
-#     spike = np.linspace(0, 8, steps) 
-#     traversal_path[:, 0] += spike 
-#     traversal_path[:, 2] += spike
-
-#     # 3. Get latent coordinates for the path
-#     path_latent = encoder.predict(traversal_path, verbose=0)
-    
-#     # 4. Get latent coordinates for the actual dataset
-#     full_latent = encoder.predict(full_x, verbose=0)
-    
-#     # Combine them to run t-SNE so the path matches the map
-#     combined = np.vstack([full_latent, path_latent])
-#     tsne = TSNE(n_components=3, perplexity=50, random_state=42)
-#     coords_all = tsne.fit_transform(combined)
-    
-#     # Split them back out
-#     coords_data = coords_all[:-steps]
-#     coords_path = coords_all[-steps:]
-
-#     # 5. Plotting
-#     fig = plt.figure(figsize=(12, 9))
-#     ax = fig.add_subplot(111, projection='3d')
-    
-#     # Plot the background population (light alpha so the path pops)
-#     ax.scatter(coords_data[:,0], coords_data[:,1], coords_data[:,2], 
-#                c='#2980b9', alpha=0.1, s=5, label='Athlete Population')
-    
-#     # Plot the doping trajectory
-#     ax.plot(coords_path[:,0], coords_path[:,1], coords_path[:,2], 
-#             'r--', lw=3, label='Simulated Doping Path', zorder=100)
-    
-#     # Mark the start and end points
-#     ax.scatter(coords_path[0,0], coords_path[0,1], coords_path[0,2], 
-#                c='blue', s=100, edgecolors='black', label='Start (Clean)')
-#     ax.scatter(coords_path[-1,0], coords_path[-1,1], coords_path[-1,2], 
-#                c='black', marker='X', s=150, label='End (Flagged)')
-
-#     ax.set_title("Figure 9: Latent Traversal - The Doping Journey", fontweight='bold')
-#     plt.legend()
-#     plt.savefig('fig9_latent_traversal.png', dpi=300)
-#     plt.show()
-
 def plot_real_athlete_path(full_x, df, encoder, target_id):
     """
     FIGURE 9: REAL-WORLD LATENT DRIFT
@@ -508,7 +454,7 @@ def shap_viz(shap_values, x_test, background_array, model):
 
     # Double check final alignment
     print(f"FINAL SHAP shape: {impact_scores.shape}") # Should now be (10, 17)
-    print(f"FINAL Data shape: {input_data.shape}")     # Should now be (10, 17)
+    print(f"FINAL Data shape: {input_data.shape}") # Should now be (10, 17)
 
     # 3. THE SUMMARY PLOT
     print("Generating Summary Plot...")
@@ -540,26 +486,31 @@ def generate_all_plots(df, latent_full, full_x, reconstructed_x, labels, feature
     print("="*50)
 
     # Fig 1: Baseline sample counts
-    plot_abp_sample_distribution(df)    
+    plot_abp_sample_distribution(df)   
+
     # Fig 2: Justification for 6D latent space (Elbow)
     # Now uses the training history to show the smooth 6D stabilization
     plot_ae_elbow(history)
+
     # Fig 3: The 3D Latent Manifold (Globular Islands + External Dopers)
     # We pass 'scores' here to "push" the dopers out of the spheres
-    plot_3d_manifold(latent_full, df, labels, scores)  
+    plot_3d_manifold(latent_full, df, labels, scores) 
+
     # Fig 4: KDE Score Humps (Log-scaled)
     # Now uses the log-scale fix to separate the humps
     plot_kde_distributions(df)
+
     # Fig 5-9: Remaining Forensic Suite
-    plot_reconstruction_heatmap(full_x, reconstructed_x, feature_names)    
+    plot_reconstruction_heatmap(full_x, reconstructed_x, feature_names)
+
     # Run this for your R-cleaned columns
     plot_reconstructed_transformation_proof(df, 'avg_igf')
     plot_reconstructed_transformation_proof(df, 'avg_pnp')
     plot_forensic_profiles(df, n=3)    
     plot_ensemble_pr_facets(df, labels)
     # Track the top suspect's journey across the 6D->3D manifold
-    #top_suspect = df[df['source'] == 'ATHLETE_REF'].nlargest(1, 'total_score')['id'].iloc[0]
-    #plot_real_athlete_path(full_x, df, encoder, target_id=top_suspect)
+    top_suspect = df[df['source'] == 'ATHLETE_REF'].nlargest(1, 'total_score')['id'].iloc[0]
+    plot_real_athlete_path(full_x, df, encoder, target_id=top_suspect)
     #plot shapely model activity:
     shap_viz(shap_values, x_test[:10], background_array, model)
     print("\n" + "="*50)
