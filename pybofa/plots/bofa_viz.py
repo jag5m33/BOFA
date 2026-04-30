@@ -509,8 +509,8 @@ def generate_all_plots(df, latent_full, full_x, reconstructed_x, labels, feature
     plot_forensic_profiles(df, n=3)    
     plot_ensemble_pr_facets(df, labels)
     # Track the top suspect's journey across the 6D->3D manifold
-    top_suspect = df[df['source'] == 'ATHLETE_REF'].nlargest(1, 'total_score')['id'].iloc[0]
-    plot_real_athlete_path(full_x, df, encoder, target_id=top_suspect)
+    #top_suspect = df[df['source'] == 'ATHLETE_REF'].nlargest(1, 'total_score')['id'].iloc[0]
+    #plot_real_athlete_path(full_x, df, encoder, target_id=top_suspect)
     #plot shapely model activity:
     shap_viz(shap_values, x_test[:10], background_array, model)
     print("\n" + "="*50)
